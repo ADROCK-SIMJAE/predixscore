@@ -1,0 +1,90 @@
+/* ── Google Fonts ───────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+/* ── Reset ─────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* ── HTML / Body ────────────────────────────────── */
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+html {
+  background: #050305;
+}
+
+body {
+  background: #050305;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  color: #F5F0E8;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* iOS notch safe area */
+  padding-top: env(safe-area-inset-top);
+}
+
+#__next {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  /* full viewport height; dvh for modern browsers, vh fallback */
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ── Universal touch / select rules ─────────────── */
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Horizontal scroll containers — momentum on iOS */
+[data-h-scroll],
+.h-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Animations — 절제된 세트만 ──────────────────── */
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+@keyframes slideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.93) } to { opacity: 1; transform: scale(1) } }
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0 }
+  65% { transform: scale(1.1) }
+  100% { transform: scale(1); opacity: 1 }
+}
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.45 } }
