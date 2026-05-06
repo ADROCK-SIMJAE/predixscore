@@ -7,6 +7,7 @@ import { T } from "@/lib/typography";
 import { usePreds } from "@/hooks/usePreds";
 import { useFeed } from "@/hooks/useFeed";
 import { Logo } from "@/components/ui/Logo";
+import { NotifBell } from "@/components/ui/NotifBell";
 import { SealBadge } from "@/components/ui/SealBadge";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { PredictCard } from "@/components/cards/PredictCard";
@@ -43,7 +44,10 @@ export const FeedScreen = ({ onNav, push }: FeedScreenProps) => {
             fontFamily: T.display,
           }}>예측 피드</div>
         </div>
-        <Logo />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Logo />
+          <NotifBell push={push} />
+        </div>
       </div>
 
       {/* 메인 탭 */}
@@ -114,7 +118,8 @@ export const FeedScreen = ({ onNav, push }: FeedScreenProps) => {
             {filteredPreds.map(pred => (
               <div key={pred.id} style={{ marginBottom: 12 }}>
                 <PredictCard pred={pred} onOpen={p => {
-                  if (p.status === "revealed") { push("result", { pred: p }); return; }
+                  // 결과 공개됐거나 본인이 이미 봉인했으면 결과 화면으로 이동
+                  if (p.status === "revealed" || p.myPred) { push("result", { pred: p }); return; }
                   push("pred_detail", { pred: p });
                 }} />
               </div>

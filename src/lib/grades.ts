@@ -5,13 +5,13 @@ import type { Grade, GradeKey } from "@/types";
 export const GRADES: Record<GradeKey, Grade> = {
   candidate: {
     key: "candidate", label: "Candidate", sub: "후보자",
-    sym: "○", color: "#888", bg: "#0A0800", bd: "#333",
+    sym: "○", color: C.t3, bg: "#0A0908", bd: C.bd,
     scoreMin: 0,  predMin: 0,
     canPublish: false, desc: "예측에 참여하고 실력을 쌓으세요",
   },
   forecaster: {
     key: "forecaster", label: "Forecaster", sub: "예측자",
-    sym: "◈", color: "#3B82F6", bg: "#050D20", bd: "#1E3A8A",
+    sym: "◈", color: C.blue, bg: C.blueB, bd: "#1E3A8A",
     scoreMin: 55, predMin: 30,
     canPublish: false, desc: "패턴을 읽는 자",
   },

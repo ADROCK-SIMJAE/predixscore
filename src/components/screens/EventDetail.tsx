@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Play, Gem, Crown, Unlock, Lock, Flame, TrendingUp, TrendingDown } from "lucide-react";
 import { C } from "@/lib/tokens";
 import { T } from "@/lib/typography";
-import { EXPERTS } from "@/lib/data";
 import { BRAND_LOGOS } from "@/lib/assets";
+import { useUnlock, useIsUnlocked } from "@/hooks/useUnlock";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { BlindBox } from "@/components/ui/BlindBox";
@@ -22,12 +22,63 @@ interface EventDetailProps {
 /* ── EventDetail ─────────────── */
 export const EventDetail = ({ ev, onBack, push }: EventDetailProps) => {
   const [showUnlock, setShowUnlock] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const unlock = useUnlock();
+  const { data: unlocked } = useIsUnlocked("event_expert", ev.id);
 
   const unlockOptions: UnlockSheetOption[] = [
-    { icon: <Play size={18} color="#7AC074" strokeWidth={2} />, title: "광고 시청으로 무료 보기", desc: "30초 광고 → 즉시 열람", badge: "무료", c: "#7AC074", bg: "rgba(122,192,116,0.08)", bd: "rgba(122,192,116,0.3)" },
-    { icon: <Gem size={18} color={C.goldL} strokeWidth={2} />, title: "포인트로 보기",            desc: "보유 포인트 차감 · 즉시 열람",  badge: "50P",  c: C.goldL,  bg: C.goldBg, bd: C.goldBd },
-    { icon: <Crown size={18} color={C.seerL} strokeWidth={2} />, title: `${ev.brand} 이벤트 구독`, desc: "기간 전체 무제한 열람",         badge: "구독", c: C.seerL,  bg: C.seerBg, bd: C.seerBd },
+    {
+      icon: <Play size={18} color="#7AC074" strokeWidth={2} />,
+      title: "광고 시청으로 무료 보기",
+      desc: "30초 광고 → 즉시 열람",
+      badge: "무료",
+      c: "#7AC074",
+      bg: "rgba(122,192,116,0.08)",
+      bd: "rgba(122,192,116,0.3)",
+      method: "ad",
+      cost: 0,
+    },
+    {
+      icon: <Gem size={18} color={C.goldL} strokeWidth={2} />,
+      title: "포인트로 보기",
+      desc: "보유 포인트 차감 · 즉시 열람",
+      badge: "50P",
+      c: C.goldL,
+      bg: C.goldBg,
+      bd: C.goldBd,
+      method: "points",
+      cost: 50,
+    },
+    {
+      icon: <Crown size={18} color={C.seerL} strokeWidth={2} />,
+      title: `${ev.brand} 이벤트 구독`,
+      desc: "기간 전체 무제한 열람",
+      badge: "구독",
+      c: C.seerL,
+      bg: C.seerBg,
+      bd: C.seerBd,
+      method: "subscription",
+      cost: 0,
+    },
   ];
+
+  const handleSelect = async (opt: UnlockSheetOption) => {
+    if (!opt.method) return;
+    setUnlockError(null);
+    try {
+      await unlock.mutateAsync({
+        contentType: "event_expert",
+        contentId: ev.id,
+        method: opt.method,
+        cost: opt.cost ?? 0,
+      });
+      setShowUnlock(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "열람 실패";
+      const ko = msg.includes("insufficient") ? "포인트가 부족합니다." : msg;
+      setUnlockError(ko);
+    }
+  };
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: C.bg, animation: "slideIn 0.28s" }}>
@@ -36,7 +87,8 @@ export const EventDetail = ({ ev, onBack, push }: EventDetailProps) => {
         onClose={() => setShowUnlock(false)}
         options={unlockOptions}
         headerTitle="오늘의 예측 열람"
-        headerDesc="전문가들의 오늘 예측을 확인하세요"
+        headerDesc={unlockError ?? "전문가들의 오늘 예측을 확인하세요"}
+        onSelect={handleSelect}
       />
       <BackBar title={`${ev.brand} ${ev.duration}일 배틀`} onBack={onBack} dark />
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
@@ -130,7 +182,7 @@ export const EventDetail = ({ ev, onBack, push }: EventDetailProps) => {
                 border: `1px solid ${isTop ? C.goldBd : C.bd}`,
                 borderRadius: T.r_md, marginBottom: 8, cursor: "pointer",
               }}
-                onClick={() => { const expert = EXPERTS.find(e => e.name === exp.name); if (expert) push("expert", { expert }); }}>
+                onClick={() => push("expert", { expertName: exp.name })}>
                 <div style={{ width: 22, textAlign: "center", flexShrink: 0 }}>
                   {isTop ? <Crown size={14} color={C.goldL} strokeWidth={2.2} />
                     : <span style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.t3, fontFamily: T.mono }}>{i + 1}</span>}
@@ -173,13 +225,14 @@ export const EventDetail = ({ ev, onBack, push }: EventDetailProps) => {
         <button onClick={() => setShowUnlock(true)}
           style={{
             width: "100%", padding: "14px 0",
-            background: C.gold,
-            border: "none", borderRadius: T.r_md, color: "#000",
+            background: unlocked ? C.bg2 : C.gold,
+            border: unlocked ? `1px solid ${C.bd}` : "none",
+            borderRadius: T.r_md, color: unlocked ? C.gold : "#000",
             fontSize: T.md, fontWeight: T.bold, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
           <Unlock size={16} strokeWidth={2.2} />
-          전문가 오늘 예측 열람
+          {unlocked ? "열람 완료 · 다시 보기" : "전문가 오늘 예측 열람"}
         </button>
         <div style={{ textAlign: "center", marginTop: 8 }}>
           <span style={{ fontSize: T.xs, color: C.t3 }}>열람 수익은 우승 전문가에게 전액 지급됩니다</span>

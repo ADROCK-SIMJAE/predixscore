@@ -61,6 +61,11 @@ export const EventScreen = ({ onBack, push }: EventScreenProps) => {
             이벤트 불러오는 중…
           </div>
         )}
+        {!isLoading && events.length === 0 && (
+          <div style={{ padding: "40px 16px", textAlign: "center", color: C.t3, fontSize: T.sm }}>
+            진행 중인 이벤트가 없습니다.
+          </div>
+        )}
         {events.map((ev, i) => {
           const live = isLive(ev);
           const top = ev.experts.length > 0 ? ev.experts.reduce((a, b) => a.correct > b.correct ? a : b) : null;
@@ -149,13 +154,16 @@ export const EventScreen = ({ onBack, push }: EventScreenProps) => {
                   </div>
                 )}
                 <div style={{ marginTop: 11 }}>
-                  <button style={{
-                    width: "100%", padding: "11px 0",
-                    background: live ? C.gold : C.bg2,
-                    border: live ? "none" : `1px solid ${C.bd}`, borderRadius: T.r_md,
-                    color: live ? "#000" : C.t3, fontSize: T.sm, fontWeight: T.bold, cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (live) setSelEvent(ev); }}
+                    style={{
+                      width: "100%", padding: "11px 0",
+                      background: live ? C.gold : C.bg2,
+                      border: live ? "none" : `1px solid ${C.bd}`, borderRadius: T.r_md,
+                      color: live ? "#000" : C.t3, fontSize: T.sm, fontWeight: T.bold,
+                      cursor: live ? "pointer" : "default",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    }}>
                     {live ? <><Unlock size={14} strokeWidth={2.2} /> 열람하고 선두 확인</> : <><Calendar size={14} strokeWidth={2} /> 오픈 예정</>}
                   </button>
                 </div>

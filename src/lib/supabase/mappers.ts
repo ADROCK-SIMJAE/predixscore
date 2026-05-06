@@ -1,8 +1,9 @@
 import type { Tables } from "@/types/database";
 import type { Expert, Pred, FeedItem, EventItem, GradeKey, Cert, QScore, EventExpert, EventHistory } from "@/types";
 
-export function mapExpert(row: Tables<"experts">): Expert {
+export function mapExpert(row: Tables<"experts">): Expert & { id: number } {
   return {
+    id: row.id,
     rank: row.rank ?? 0,
     name: row.name,
     gk: row.gk,
@@ -15,6 +16,7 @@ export function mapExpert(row: Tables<"experts">): Expert {
     badges: (row.badges as unknown as string[]) ?? [],
     certs: (row.certs as unknown as Cert[]) ?? [],
     qScores: (row.q_scores as unknown as QScore[]) ?? [],
+    profileId: row.profile_id ?? null,
   };
 }
 

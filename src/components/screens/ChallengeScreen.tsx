@@ -6,9 +6,10 @@ import type { LucideIcon } from "lucide-react";
 import { C } from "@/lib/tokens";
 import { Gd } from "@/lib/grades";
 import { T } from "@/lib/typography";
+import { useApplyChallenge, useMyChallengeApps } from "@/hooks/useChallenge";
 import { Logo } from "@/components/ui/Logo";
+import { NotifBell } from "@/components/ui/NotifBell";
 import { Badge } from "@/components/ui/Badge";
-import { SealBadge } from "@/components/ui/SealBadge";
 import { BottomNav } from "@/components/nav/BottomNav";
 import type { GradeKey } from "@/types";
 
@@ -29,21 +30,54 @@ const GradeIconMap: Record<GradeKey, LucideIcon> = {
 };
 
 /* ── ChallengeScreen ─────────────── */
-export const ChallengeScreen = ({ onNav, loggedIn, onAuth }: ChallengeScreenProps) => {
+export const ChallengeScreen = ({ onNav, push, loggedIn, onAuth }: ChallengeScreenProps) => {
   const [tab, setTab] = useState<"overview" | "apply" | "history">("overview");
-  const [applied, setApplied] = useState(false);
+  const [motivation, setMotivation] = useState("");
+  const [targetGrade, setTargetGrade] = useState<GradeKey>("forecaster");
+  const [applyError, setApplyError] = useState<string | null>(null);
+  const apply = useApplyChallenge();
+  const { data: myApps = [] } = useMyChallengeApps();
+
+  // 등급별 신청 진행 상태 — pending 또는 approved 면 해당 등급은 다시 신청 불가
+  const isAppliedFor = (g: GradeKey) =>
+    myApps.some((a) => a.target_grade === g && (a.status === "pending" || a.status === "approved"));
+
+  const appliedTarget = isAppliedFor(targetGrade);
+
+  const handleApply = async () => {
+    if (!loggedIn) {
+      onAuth();
+      return;
+    }
+    setApplyError(null);
+    try {
+      await apply.mutateAsync({
+        targetGrade,
+        motivation: motivation.trim() || undefined,
+      });
+      setMotivation("");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "신청 실패";
+      setApplyError(msg);
+    }
+  };
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: C.bg }}>
       <div style={{ padding: "10px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Logo />
-        <div style={{ fontSize: T.xs, color: C.gold, fontFamily: T.mono, fontWeight: T.semibold }}>2026 Q3</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: T.xs, color: C.gold, fontFamily: T.mono, fontWeight: T.semibold }}>2026 Q3</div>
+          <NotifBell push={push} />
+        </div>
       </div>
       {/* 히어로 */}
       <div style={{
-        margin: "12px 16px 0", background: "linear-gradient(180deg,#100B02,#0A0700)",
+        margin: "12px 16px 0",
+        background: "linear-gradient(145deg,#140D02 0%,#0A0700 55%,#120A01 100%)",
         borderRadius: T.r_xl, padding: "18px 16px 14px", position: "relative", overflow: "hidden",
         border: `1px solid ${C.goldBd}`,
+        boxShadow: "0 4px 24px rgba(201,160,48,0.08)",
       }}>
         <div style={{
           fontFamily: T.display, fontSize: T.xl, fontWeight: T.bold,
@@ -75,17 +109,20 @@ export const ChallengeScreen = ({ onNav, loggedIn, onAuth }: ChallengeScreenProp
       </div>
       {/* 탭 */}
       <div style={{
-        display: "flex", gap: 0, margin: "12px 16px 0", background: C.bg1,
+        display: "flex", gap: 0, margin: "12px 16px 0", background: C.bg2,
         borderRadius: T.r_md, padding: 3, border: `1px solid ${C.bd}`,
       }}>
         {([["overview", "챌린지 소개"], ["apply", "도전 신청"], ["history", "내 이력"]] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             style={{
               flex: 1, padding: "8px 0",
-              background: tab === id ? C.gold : "transparent",
+              background: tab === id
+                ? `linear-gradient(180deg, ${C.goldL}cc, ${C.gold})`
+                : "transparent",
               border: "none", borderRadius: T.r_sm,
               color: tab === id ? "#000" : C.t3,
-              fontSize: T.sm, fontWeight: T.semibold, cursor: "pointer", transition: "all 0.18s",
+              fontSize: T.sm, fontWeight: T.semibold, cursor: "pointer",
+              transition: "all 200ms cubic-bezier(0.32,0.72,0,1)",
             }}>
             {label}
           </button>
@@ -192,20 +229,80 @@ export const ChallengeScreen = ({ onNav, loggedIn, onAuth }: ChallengeScreenProp
         )}
         {tab === "apply" && (
           <div style={{ animation: "fadeUp 0.25s" }}>
-            {applied ? (
-              <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-                  <SealBadge size={64} gk="proven" />
+            <div>
+              {/* 등급 선택 */}
+              <div
+                style={{
+                  background: C.bg1,
+                  border: `1px solid ${C.bd}`,
+                  borderRadius: T.r_lg,
+                  padding: "14px",
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.t2, marginBottom: 10 }}>
+                  도전 등급 선택
                 </div>
-                <div style={{
-                  fontFamily: T.display, fontSize: T.xl, fontWeight: T.bold,
-                  color: C.t1, marginBottom: 8,
-                }}>도전 신청 완료</div>
-                <div style={{ fontSize: T.sm, color: C.t2, lineHeight: T.relaxed }}>
-                  2026 Q3 Proven 도전이 시작됩니다.<br />7월 1일부터 예측이 집계됩니다.
+                <div style={{ display: "flex", gap: 6 }}>
+                  {(["forecaster", "proven", "seer"] as GradeKey[]).map((gkOpt) => {
+                    const g = Gd(gkOpt);
+                    const Icon = GradeIconMap[gkOpt];
+                    const active = targetGrade === gkOpt;
+                    const inProgress = isAppliedFor(gkOpt);
+                    return (
+                      <button
+                        key={gkOpt}
+                        onClick={() => setTargetGrade(gkOpt)}
+                        style={{
+                          flex: 1,
+                          padding: "10px 4px",
+                          background: active ? g.bg : C.bg2,
+                          border: `1px solid ${active ? g.color : C.bd}`,
+                          borderRadius: T.r_md,
+                          color: active ? g.color : C.t2,
+                          fontSize: T.xs,
+                          fontWeight: T.bold,
+                          cursor: "pointer",
+                          textAlign: "center",
+                          position: "relative",
+                        }}
+                      >
+                        <Icon size={14} color={active ? g.color : C.t3} strokeWidth={2.2} />
+                        <div style={{ marginTop: 4 }}>{g.label}</div>
+                        {inProgress && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 4,
+                              right: 4,
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: C.gold,
+                            }}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+                {appliedTarget && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: "8px 10px",
+                      background: C.goldBg,
+                      border: `1px solid ${C.goldBd}`,
+                      borderRadius: T.r_md,
+                      fontSize: T.xs,
+                      color: C.goldL,
+                    }}
+                  >
+                    이 등급은 이미 신청 중입니다. 다른 등급을 선택하거나 &lsquo;내 이력&rsquo; 탭에서 진행 상태를 확인하세요.
+                  </div>
+                )}
               </div>
-            ) : (
+
               <div>
                 <div style={{
                   background: C.bg1, border: `1px solid ${C.bd}`, borderRadius: T.r_lg,
@@ -252,54 +349,145 @@ export const ChallengeScreen = ({ onNav, loggedIn, onAuth }: ChallengeScreenProp
                   <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <Check size={13} color={C.green} strokeWidth={2.5} />
                     <span style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.t1 }}>
-                      Forecaster 도전 가능
+                      {Gd(targetGrade).label} 도전 신청
                     </span>
                   </div>
                   <div style={{ fontSize: T.sm, color: C.t2, lineHeight: T.relaxed, marginBottom: 12 }}>
-                    현재 조건으로 Forecaster 등급에 도전할 수 있습니다.<br />
+                    선택한 등급으로 신청합니다. 신청 이력은 &lsquo;내 이력&rsquo; 탭에서 확인하세요.<br />
                     Forecaster → Proven → Seer 순서로 성장하세요.
                   </div>
-                  <button onClick={() => loggedIn ? setApplied(true) : onAuth()}
+                  <textarea
+                    value={motivation}
+                    onChange={(e) => setMotivation(e.target.value)}
+                    placeholder="도전 동기 (선택)"
+                    rows={3}
+                    maxLength={300}
+                    disabled={appliedTarget}
                     style={{
-                      width: "100%", padding: "13px 0",
-                      background: "#3B82F6",
-                      border: "none", borderRadius: T.r_md, color: "#fff",
-                      fontSize: T.sm, fontWeight: T.bold, cursor: "pointer",
-                    }}>
-                    Forecaster 도전 신청
+                      width: "100%",
+                      padding: "10px 12px",
+                      background: C.bg2,
+                      border: `1px solid ${C.bd}`,
+                      borderRadius: T.r_md,
+                      fontSize: T.sm,
+                      color: C.t1,
+                      outline: "none",
+                      fontFamily: T.sans,
+                      resize: "none",
+                      marginBottom: 10,
+                      lineHeight: T.relaxed,
+                      opacity: appliedTarget ? 0.5 : 1,
+                    }}
+                  />
+                  {applyError && (
+                    <div
+                      style={{
+                        marginBottom: 10,
+                        padding: "8px 12px",
+                        background: "rgba(239,68,68,0.08)",
+                        border: "1px solid rgba(239,68,68,0.35)",
+                        borderRadius: T.r_md,
+                        fontSize: T.xs,
+                        color: C.red,
+                      }}
+                    >
+                      {applyError}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleApply}
+                    disabled={apply.isPending || appliedTarget}
+                    style={{
+                      width: "100%",
+                      padding: "13px 0",
+                      background: appliedTarget
+                        ? C.bg2
+                        : apply.isPending
+                        ? C.bg2
+                        : `linear-gradient(180deg, ${C.goldL}, ${C.gold})`,
+                      border: appliedTarget || apply.isPending
+                        ? `1px solid ${C.bd}`
+                        : `1px solid ${C.goldL}40`,
+                      borderRadius: T.r_md,
+                      color: appliedTarget || apply.isPending ? C.t3 : "#000",
+                      fontSize: T.sm,
+                      fontWeight: T.bold,
+                      cursor: apply.isPending || appliedTarget ? "default" : "pointer",
+                      boxShadow: appliedTarget || apply.isPending ? "none" : T.shadow_gold,
+                      transition: "all 180ms cubic-bezier(0.32,0.72,0,1)",
+                      opacity: appliedTarget || apply.isPending ? 0.5 : 1,
+                    }}
+                  >
+                    {appliedTarget
+                      ? `${Gd(targetGrade).label} 신청 진행 중`
+                      : apply.isPending
+                      ? "신청 중…"
+                      : `${Gd(targetGrade).label} 도전 신청`}
                   </button>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
         {tab === "history" && (
           <div style={{ animation: "fadeUp 0.25s" }}>
-            {([
-              { q: "2026 Q2", gk: "candidate" as GradeKey, status: "현재" },
-              { q: "2026 Q1", gk: "candidate" as GradeKey, status: "유지" },
-              { q: "2025 Q4", gk: "candidate" as GradeKey, status: "첫 예측 시작" },
-            ]).map((r, i) => {
-              const g = Gd(r.gk);
-              const Icon = GradeIconMap[r.gk];
+            {myApps.length === 0 && (
+              <div
+                style={{
+                  padding: "30px 0",
+                  textAlign: "center",
+                  color: C.t3,
+                  fontSize: T.sm,
+                }}
+              >
+                아직 도전 신청 이력이 없습니다.
+              </div>
+            )}
+            {myApps.map((r) => {
+              const g = Gd(r.target_grade);
+              const Icon = GradeIconMap[r.target_grade];
+              const statusLabel =
+                r.status === "approved" ? "승인" : r.status === "rejected" ? "반려" : "심사 중";
+              const statusColor =
+                r.status === "approved" ? C.green : r.status === "rejected" ? C.red : C.gold;
               return (
-                <div key={i} style={{
-                  background: C.bg1, border: `1px solid ${C.bd}`,
-                  borderRadius: T.r_md, padding: "11px 13px", marginBottom: 8,
-                  display: "flex", gap: 11, alignItems: "center",
-                }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: T.r_md, background: g.bg,
-                    border: `1px solid ${g.bd}`, display: "flex", alignItems: "center",
-                    justifyContent: "center", flexShrink: 0,
-                  }}>
+                <div
+                  key={r.id}
+                  style={{
+                    background: C.bg1,
+                    border: `1px solid ${C.bd}`,
+                    borderRadius: T.r_md,
+                    padding: "11px 13px",
+                    marginBottom: 8,
+                    display: "flex",
+                    gap: 11,
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: T.r_md,
+                      background: g.bg,
+                      border: `1px solid ${g.bd}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
                     <Icon size={15} color={g.color} strokeWidth={2.2} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.t1 }}>{r.q}</div>
-                    <div style={{ fontSize: T.xs, color: C.t3, marginTop: 1 }}>{r.status}</div>
+                    <div style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.t1 }}>
+                      {g.label} 도전
+                    </div>
+                    <div style={{ fontSize: T.xs, color: statusColor, marginTop: 1 }}>
+                      {statusLabel}
+                    </div>
                   </div>
-                  <Badge gk={r.gk} sm />
+                  <Badge gk={r.target_grade} sm />
                 </div>
               );
             })}

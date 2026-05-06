@@ -17,6 +17,7 @@ import { ChatroomScreen } from "@/components/screens/ChatroomScreen";
 import { DMListScreen } from "@/components/screens/DMListScreen";
 import { DMChatScreen } from "@/components/screens/DMChatScreen";
 import { EventScreen } from "@/components/screens/EventScreen";
+import { EventDetail } from "@/components/screens/EventDetail";
 import { ResultScreen } from "@/components/screens/ResultScreen";
 import { PredictModal } from "@/components/modals/PredictModal";
 import { AuthModal } from "@/components/modals/AuthModal";
@@ -50,24 +51,58 @@ export default function App() {
 
   const render = () => {
     const { screen, expert, conv, pred } = cur;
+    // 추가 props (느슨한 타입 — UiStore StackEntry 의 자유 필드)
+    const expertId = (cur.expertId as number | null | undefined) ?? null;
+    const expertName = (cur.expertName as string | null | undefined) ?? null;
+    const conversationId = (cur.conversationId as number | null | undefined) ?? null;
+    const otherProfile = cur.otherProfile as
+      | { id?: string; handle: string; grade: import("@/types").GradeKey; avatar_url?: string | null }
+      | null
+      | undefined;
+    const ev = cur.ev as import("@/types").EventItem | undefined;
+    const predId = (cur.predId as number | null | undefined) ?? null;
+
     switch (screen) {
       case "home":      return <HomeScreen      onNav={nav} push={push} loggedIn={loggedIn} onAuth={onAuth} />;
       case "feed":      return <FeedScreen      onNav={nav} push={push} />;
       case "challenge": return <ChallengeScreen onNav={nav} push={push} loggedIn={loggedIn} onAuth={onAuth} />;
       case "ranking":   return <RankingScreen   onNav={nav} push={push} />;
       case "my":        return <MyScreen        onNav={nav} push={push} loggedIn={loggedIn} onAuth={onAuth} onLogout={onLogout} />;
-      case "expert":    return <ExpertScreen    expert={expert} onBack={pop} push={push} />;
-      case "chatroom":  return <ChatroomScreen  expert={expert} onBack={pop} />;
+      case "expert":
+        return (
+          <ExpertScreen
+            expert={expert}
+            expertId={expertId}
+            expertName={expertName}
+            onBack={pop}
+            push={push}
+            loggedIn={loggedIn}
+            onAuth={onAuth}
+          />
+        );
+      case "chatroom":
+        return <ChatroomScreen expert={expert} expertId={expertId} onBack={pop} />;
       case "dm_list":   return <DMListScreen    onBack={pop} push={push} />;
-      case "dm_chat":   return <DMChatScreen    conv={conv} onBack={pop} />;
+      case "dm_chat":
+        return (
+          <DMChatScreen
+            conv={conv}
+            conversationId={conversationId}
+            otherProfile={otherProfile ?? null}
+            onBack={pop}
+          />
+        );
       case "event":     return <EventScreen     onBack={pop} push={push} />;
-      case "result":    return <ResultScreen    pred={pred} onBack={pop} push={push} />;
+      case "event_detail":
+        return ev ? <EventDetail ev={ev} onBack={pop} push={push} /> : <EventScreen onBack={pop} push={push} />;
+      case "result":
+        return <ResultScreen pred={pred} predId={predId} onBack={pop} push={push} />;
       case "pred_detail":
         return pred ? (
           <PredictModal pred={pred} onClose={pop} loggedIn={loggedIn} onAuth={onAuth} />
         ) : null;
       case "feed_detail":
-        return <ResultScreen pred={pred} onBack={pop} push={push} />;
+        return <ResultScreen pred={pred} predId={predId} onBack={pop} push={push} />;
       default:          return <HomeScreen onNav={nav} push={push} loggedIn={loggedIn} onAuth={onAuth} />;
     }
   };

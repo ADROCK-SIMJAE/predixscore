@@ -18,6 +18,7 @@ export interface Category {
   c: string;
   bg: string;
   e: string;
+  stripe?: string;
 }
 
 export interface ScoreInput {
@@ -50,6 +51,7 @@ export interface Expert {
   badges: string[];
   certs: Cert[];
   qScores: QScore[];
+  profileId?: string | null;
 }
 
 export interface Pred {

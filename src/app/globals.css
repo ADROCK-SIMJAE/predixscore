@@ -23,15 +23,16 @@ body {
 }
 
 html {
-  background: #050305;
+  background: #0A0908;
 }
 
 body {
-  background: #050305;
+  background: #0A0908;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
-  color: #F5F0E8;
+  -moz-osx-font-smoothing: grayscale;
+  color: #F5F2EC;
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
@@ -44,7 +45,6 @@ body {
   position: relative;
   isolation: isolate;
   width: 100%;
-  /* full viewport height; dvh for modern browsers, vh fallback */
   height: 100vh;
   height: 100dvh;
 }
@@ -64,6 +64,11 @@ button {
   -webkit-user-select: none;
 }
 
+/* 버튼 active 상태 — 전역 scale */
+button:active {
+  transform: scale(0.97);
+}
+
 input,
 textarea {
   -webkit-appearance: none;
@@ -76,15 +81,51 @@ textarea {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── Animations — 절제된 세트만 ──────────────────── */
-@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
-@keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
-@keyframes slideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
-@keyframes scaleIn { from { opacity: 0; transform: scale(0.93) } to { opacity: 1; transform: scale(1) } }
+/* ── Animations ──────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%) }
+  to   { transform: translateY(0) }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%) }
+  to   { transform: translateX(0) }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.93) }
+  to   { opacity: 1; transform: scale(1) }
+}
+
 @keyframes popIn {
-  0% { transform: scale(0.5); opacity: 0 }
-  65% { transform: scale(1.1) }
+  0%   { transform: scale(0.5); opacity: 0 }
+  65%  { transform: scale(1.1) }
   100% { transform: scale(1); opacity: 1 }
 }
-@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.45 } }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1 }
+  50%       { opacity: 0.4 }
+}
+
+/* 댓글/메시지 등장 */
+@keyframes messageIn {
+  from { opacity: 0; transform: scale(0.95) translateY(6px) }
+  to   { opacity: 1; transform: scale(1) translateY(0) }
+}
+
+/* 골드 글로우 pulse — 프리미엄 액션 버튼 */
+@keyframes goldGlow {
+  0%, 100% { box-shadow: 0 4px 16px rgba(201,160,48,0.18) }
+  50%       { box-shadow: 0 4px 24px rgba(226,189,82,0.32) }
+}

@@ -16,7 +16,7 @@ export const ScoreGauge = ({ score, size = "lg" }: ScoreGaugeProps) => {
   const dash = (score / 100) * circ;
   const isGold = score >= 70;
   const isSeer = score >= 85;
-  const color = isSeer ? C.seerL : isGold ? C.gold : "#3B82F6";
+  const color = isSeer ? C.seerL : isGold ? C.gold : C.blue;
   const sz = size === "lg" ? 110 : 70;
   return (
     <div style={{
