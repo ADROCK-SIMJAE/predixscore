@@ -39,6 +39,41 @@ type MarketDetailClientProps = {
 };
 
 type SortKey = "probability" | "volume" | "liquidity";
+type ChartInterval = "1h" | "6h" | "1d" | "1w" | "1m" | "max";
+
+const INTERVALS: { key: ChartInterval; label: string; fidelity: number }[] = [
+  { key: "1h", label: "1H", fidelity: 1 },
+  { key: "6h", label: "6H", fidelity: 5 },
+  { key: "1d", label: "1D", fidelity: 15 },
+  { key: "1w", label: "1W", fidelity: 60 },
+  { key: "1m", label: "1M", fidelity: 240 },
+  { key: "max", label: "ALL", fidelity: 1440 },
+];
+
+const CHART_COLORS = ["#3b82f6", "#f97316", "#22c55e", "#a855f7", "#06b6d4", "#ef4444", "#eab308"];
+
+function extractCandidate(question: string): string {
+  const m = question.match(/^Will\s+(.+?)\s+win\b/i);
+  if (m && m[1].length <= 30) return m[1];
+  return question.length > 32 ? question.slice(0, 30) + "…" : question;
+}
+
+function isScheduledEvent(markets: { question: string }[]): boolean {
+  if (markets.length < 2) return false;
+  // Detect date-anchored questions: e.g. "by May 8" / "5월 8일" / "by Dec 31, 2026"
+  const dateRegex = /(by\s+\w+\s+\d+|\d+월\s*\d+일|Q[1-4]|2026|2027)/i;
+  const matched = markets.filter((m) => dateRegex.test(m.question)).length;
+  return matched / markets.length > 0.6;
+}
+
+type TopHistory = {
+  marketId: string;
+  question: string;
+  candidate: string;
+  color: string;
+  history: PriceHistoryPoint[];
+  price: number;
+};
 
 const EMPTY_BOOK: OrderBookSummary = {
   market: "",
@@ -91,11 +126,19 @@ export function MarketDetailClient({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("probability");
   const [showBook, setShowBook] = useState(false);
+  const [chartInterval, setChartInterval] = useState<ChartInterval>("1d");
+  const [topHistories, setTopHistories] = useState<TopHistory[]>([]);
   const [betOpen, setBetOpen] = useState(false);
   const [betSide, setBetSide] = useState<0 | 1>(0);
   const [betMarketIndex, setBetMarketIndex] = useState(0);
 
   const isMultiMarket = event.markets.length > 1;
+  const isScheduled = isScheduledEvent(event.markets);
+  const eventType: "binary" | "multi" | "scheduled" = isScheduled
+    ? "scheduled"
+    : isMultiMarket
+      ? "multi"
+      : "binary";
   const activeMarket = event.markets[marketIndex] ?? event.markets[0];
   const tokenId = activeMarket?.clobTokenIds[outcomeIndex] ?? "";
   const outcomeLabel = activeMarket?.outcomes[outcomeIndex] ?? "Yes";
@@ -122,7 +165,7 @@ export function MarketDetailClient({
             return data.book ?? EMPTY_BOOK;
           },
         ),
-        fetch(`/api/polymarket/history?market=${tokenId}&interval=1d&fidelity=15`, {
+        fetch(`/api/polymarket/history?market=${tokenId}&interval=${chartInterval}&fidelity=${INTERVALS.find((i) => i.key === chartInterval)?.fidelity ?? 15}`, {
           signal: controller.signal,
         }).then(async (response) => {
           const data = (await response.json()) as { error?: string; history?: PriceHistoryPoint[] };
@@ -154,7 +197,45 @@ export function MarketDetailClient({
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [tokenId]);
+  }, [tokenId, chartInterval]);
+
+  // Fetch top-5 outcome histories for multi-outcome events (Polymarket-style multi-line chart)
+  useEffect(() => {
+    if (eventType !== "multi") {
+      setTopHistories([]);
+      return;
+    }
+    const top = [...event.markets]
+      .sort((a, b) => (b.outcomePrices[0] ?? 0) - (a.outcomePrices[0] ?? 0))
+      .slice(0, 5);
+    const fidelity = INTERVALS.find((i) => i.key === chartInterval)?.fidelity ?? 15;
+    let cancelled = false;
+    Promise.all(
+      top.map((m, idx) => {
+        const tid = m.clobTokenIds[0];
+        if (!tid) return Promise.resolve(null);
+        return fetch(
+          `/api/polymarket/history?market=${tid}&interval=${chartInterval}&fidelity=${fidelity}`,
+        )
+          .then((r) => r.json())
+          .then((d) => ({
+            marketId: m.id,
+            question: m.question,
+            candidate: extractCandidate(m.question),
+            color: CHART_COLORS[idx % CHART_COLORS.length],
+            history: (d.history as PriceHistoryPoint[]) ?? [],
+            price: m.outcomePrices[0] ?? 0,
+          }))
+          .catch(() => null);
+      }),
+    ).then((results) => {
+      if (cancelled) return;
+      setTopHistories(results.filter((r): r is TopHistory => Boolean(r)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [event.id, event.markets, chartInterval, eventType]);
 
   const sortedMarkets = useMemo(() => {
     const indexed = event.markets.map((market, originalIndex) => ({ market, originalIndex }));
@@ -320,19 +401,53 @@ export function MarketDetailClient({
             ) : null}
           </div>
 
-          {/* Chart card */}
+          {/* Chart card — hidden for scheduled (date-based) events */}
+          {eventType !== "scheduled" ? (
           <div className="glass-panel p-[20px_22px] grid gap-4">
-            <div className="flex justify-between items-start gap-4">
-              <div>
-                <span className="text-muted text-[12px] tracking-[0.14em] uppercase">{t("selectedOutcome")}</span>
-                <h2 className="text-[22px] tracking-[-0.02em] mt-1 mb-0">{activeMarket?.question}</h2>
+            {eventType === "multi" && topHistories.length > 0 ? (
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px]">
+                {topHistories.map((th) => (
+                  <span key={th.marketId} className="inline-flex items-center gap-1.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full inline-block"
+                      style={{ background: th.color }}
+                      aria-hidden="true"
+                    />
+                    <span className="font-semibold text-ink">{th.candidate}</span>
+                    <span className="text-muted tabular-nums">{Math.round(th.price * 100)}%</span>
+                  </span>
+                ))}
               </div>
-              <div className="text-right">
-                <strong className="block text-[32px] tracking-[-0.03em] tabular-nums">{Math.round(livePrice * 100)}%</strong>
-                <span className="block text-muted text-[12px]">{formatPercent(livePrice)}</span>
+            ) : (
+              <div className="flex justify-between items-start gap-4">
+                <div>
+                  <span className="text-muted text-[12px] tracking-[0.14em] uppercase">{t("selectedOutcome")}</span>
+                  <h2 className="text-[22px] tracking-[-0.02em] mt-1 mb-0">{activeMarket?.question}</h2>
+                </div>
+                <div className="text-right">
+                  <strong className="block text-[32px] tracking-[-0.03em] tabular-nums">{Math.round(livePrice * 100)}%</strong>
+                  <span className="block text-muted text-[12px]">{formatPercent(livePrice)}</span>
+                </div>
               </div>
+            )}
+            <div className="flex justify-end gap-1">
+              {INTERVALS.map((iv) => (
+                <button
+                  key={iv.key}
+                  type="button"
+                  onClick={() => setChartInterval(iv.key)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold tracking-[0.04em] transition-colors duration-150 ${
+                    chartInterval === iv.key
+                      ? "bg-accent/15 text-accent"
+                      : "text-muted hover:bg-ink/5 hover:text-ink"
+                  }`}
+                  aria-pressed={chartInterval === iv.key}
+                >
+                  {iv.label}
+                </button>
+              ))}
             </div>
-            <div className="w-full h-[220px]">
+            <div className="w-full h-[220px] relative">
               <svg viewBox="0 0 760 220" preserveAspectRatio="none" className="w-full h-full">
                 <defs>
                   <linearGradient id="priceArea" x1="0%" x2="0%" y1="0%" y2="100%">
@@ -341,13 +456,56 @@ export function MarketDetailClient({
                   </linearGradient>
                 </defs>
                 {[0, 1, 2, 3].map((row) => (
-                  <line key={row} stroke="rgba(84,116,149,0.12)" strokeWidth="1" x1="0" y1={row * 55} x2="760" y2={row * 55} />
+                  <line key={row} stroke="rgba(84,116,149,0.12)" strokeWidth="1" x1="32" y1={row * 55 + 8} x2="760" y2={row * 55 + 8} />
                 ))}
-                {chartAreaPath ? <path fill="url(#priceArea)" d={chartAreaPath} /> : null}
-                {chartPath ? (
-                  <path fill="none" stroke="#0f6dff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d={chartPath} />
-                ) : null}
+                {/* Y-axis labels: 100% / 50% / 0% */}
+                <text x="6" y="14" fill="rgba(84,116,149,0.7)" fontSize="11" fontWeight="600">100%</text>
+                <text x="6" y="118" fill="rgba(84,116,149,0.7)" fontSize="11" fontWeight="600">50%</text>
+                <text x="6" y="216" fill="rgba(84,116,149,0.7)" fontSize="11" fontWeight="600">0%</text>
+                {eventType === "multi"
+                  ? topHistories.map((th) => {
+                      if (!th.history.length) return null;
+                      const path = th.history
+                        .map((point, idx) => {
+                          const x = (idx / Math.max(th.history.length - 1, 1)) * 760;
+                          const y = 220 - point.p * (220 - 24) - 12;
+                          return `${idx === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+                        })
+                        .join(" ");
+                      return (
+                        <path
+                          key={th.marketId}
+                          fill="none"
+                          stroke={th.color}
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity="0.92"
+                          d={path}
+                        />
+                      );
+                    })
+                  : (
+                    <>
+                      {chartAreaPath ? <path fill="url(#priceArea)" d={chartAreaPath} /> : null}
+                      {chartPath ? (
+                        <path
+                          fill="none"
+                          stroke="#0f6dff"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d={chartPath}
+                        />
+                      ) : null}
+                    </>
+                  )}
               </svg>
+              {chartFlat !== null ? (
+                <div className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/85 border border-[rgba(16,44,75,0.08)] px-2.5 py-1 text-[11px] font-semibold text-muted-strong shadow-sm">
+                  Flat · stuck at {(chartFlat * 100).toFixed(2)}%
+                </div>
+              ) : null}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -375,6 +533,7 @@ export function MarketDetailClient({
               </div>
             ) : null}
           </div>
+          ) : null}
 
           {/* Outcomes multi-market list */}
           {isMultiMarket ? (
