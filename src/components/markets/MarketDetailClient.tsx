@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Flame, RefreshCcw, Search, Sparkles, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { BetModal } from "@/components/markets/BetModal";
+import { SignInModal } from "@/components/auth/SignInModal";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -550,6 +552,7 @@ export function MarketDetailClient({
           paperTradingConfigured={paperTradingConfigured}
         />
       ) : null}
+      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
     </>
   );
 }
