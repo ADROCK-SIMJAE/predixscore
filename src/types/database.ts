@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "event_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_comments: {
+        Row: {
+          body: string
+          created_at: string
+          event_slug: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          event_slug: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          event_slug?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_resolutions: {
         Row: {
           event_slug: string
@@ -177,6 +227,25 @@ export type Database = {
           total_staked: number
           win_rate: number
           won_count: number
+        }[]
+      }
+      list_event_comments: {
+        Args: {
+          p_event_slug: string
+          p_limit?: number
+          p_sort?: string
+          p_user_id?: string | null
+        }
+        Returns: {
+          avatar_url: string | null
+          body: string
+          created_at: string
+          display_name: string | null
+          event_slug: string
+          id: string
+          like_count: number
+          liked_by_me: boolean
+          user_id: string
         }[]
       }
       list_leaderboard: {

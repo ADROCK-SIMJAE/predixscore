@@ -5,6 +5,7 @@ import { ChevronDown, Flame, RefreshCcw, Search, Sparkles, Star } from "lucide-r
 import { useTranslations } from "next-intl";
 import { BetModal } from "@/components/markets/BetModal";
 import { SignInModal } from "@/components/auth/SignInModal";
+import { EventComments } from "@/components/comments/EventComments";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -700,6 +701,9 @@ export function MarketDetailClient({
               </>
             ) : null}
           </div>
+
+          {/* Event comments — Polymarket-style 4-tab UI */}
+          <EventComments eventSlug={event.slug} />
 
           {/* Footer */}
           <div className="text-center text-[12px] text-muted py-2">
