@@ -1,3 +1,5 @@
+// Supabase MCP generate_typescript_types 결과
+// 스키마 변경 후에는 MCP `generate_typescript_types` 로 재생성하여 갱신
 export type Json =
   | string
   | number
@@ -12,641 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      challenge_applications: {
+      market_resolutions: {
         Row: {
-          created_at: string
-          id: number
-          motivation: string | null
-          reviewed_at: string | null
-          status: Database["public"]["Enums"]["challenge_status"]
-          target_grade: Database["public"]["Enums"]["grade_key"]
-          user_id: string
+          event_slug: string
+          market_slug: string
+          resolved_at: string
+          source: string
+          winning_outcome_index: number
         }
         Insert: {
-          created_at?: string
-          id?: number
-          motivation?: string | null
-          reviewed_at?: string | null
-          status?: Database["public"]["Enums"]["challenge_status"]
-          target_grade: Database["public"]["Enums"]["grade_key"]
-          user_id: string
+          event_slug: string
+          market_slug: string
+          resolved_at?: string
+          source?: string
+          winning_outcome_index: number
         }
         Update: {
-          created_at?: string
-          id?: number
-          motivation?: string | null
-          reviewed_at?: string | null
-          status?: Database["public"]["Enums"]["challenge_status"]
-          target_grade?: Database["public"]["Enums"]["grade_key"]
-          user_id?: string
+          event_slug?: string
+          market_slug?: string
+          resolved_at?: string
+          source?: string
+          winning_outcome_index?: number
         }
         Relationships: []
       }
-      chatroom_messages: {
-        Row: {
-          content: string
-          created_at: string
-          expert_id: number
-          id: number
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          expert_id: number
-          id?: number
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          expert_id?: number
-          id?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      comment_likes: {
-        Row: {
-          comment_id: number
-          created_at: string
-          id: number
-          user_id: string
-        }
-        Insert: {
-          comment_id: number
-          created_at?: string
-          id?: number
-          user_id: string
-        }
-        Update: {
-          comment_id?: number
-          created_at?: string
-          id?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      comments: {
-        Row: {
-          content: string
-          created_at: string
-          id: number
-          likes: number
-          prediction_id: number
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: number
-          likes?: number
-          prediction_id: number
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: number
-          likes?: number
-          prediction_id?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      content_unlocks: {
-        Row: {
-          content_id: number
-          content_type: string
-          cost: number
-          created_at: string
-          id: number
-          method: string
-          user_id: string
-        }
-        Insert: {
-          content_id: number
-          content_type: string
-          cost?: number
-          created_at?: string
-          id?: number
-          method: string
-          user_id: string
-        }
-        Update: {
-          content_id?: number
-          content_type?: string
-          cost?: number
-          created_at?: string
-          id?: number
-          method?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      conversations: {
+      paper_positions: {
         Row: {
           created_at: string
-          id: number
-          last_message_at: string | null
-          user_a: string
-          user_b: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          last_message_at?: string | null
-          user_a: string
-          user_b: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          last_message_at?: string | null
-          user_a?: string
-          user_b?: string
-        }
-        Relationships: []
-      }
-      events: {
-        Row: {
-          brand: string
-          brand_color: string | null
-          created_at: string
-          deadline: string | null
-          description: string | null
-          duration: number
-          end_date: string | null
-          experts: Json
-          history: Json
-          icon: string | null
-          id: number
-          logo: string | null
-          prize_pool: number
-          start_date: string | null
-          status: Database["public"]["Enums"]["event_status"]
-          sym: string | null
-        }
-        Insert: {
-          brand: string
-          brand_color?: string | null
-          created_at?: string
-          deadline?: string | null
-          description?: string | null
-          duration?: number
-          end_date?: string | null
-          experts?: Json
-          history?: Json
-          icon?: string | null
-          id?: number
-          logo?: string | null
-          prize_pool?: number
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["event_status"]
-          sym?: string | null
-        }
-        Update: {
-          brand?: string
-          brand_color?: string | null
-          created_at?: string
-          deadline?: string | null
-          description?: string | null
-          duration?: number
-          end_date?: string | null
-          experts?: Json
-          history?: Json
-          icon?: string | null
-          id?: number
-          logo?: string | null
-          prize_pool?: number
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["event_status"]
-          sym?: string | null
-        }
-        Relationships: []
-      }
-      expert_subscriptions: {
-        Row: {
-          created_at: string
-          expert_id: number
-          id: number
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          expert_id: number
-          id?: number
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          expert_id?: number
-          id?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      experts: {
-        Row: {
-          acc: number
-          badges: Json
-          bio: string | null
-          cat: string | null
-          certs: Json
-          created_at: string
-          gk: Database["public"]["Enums"]["grade_key"]
-          id: number
-          name: string
-          preds: number
-          profile_id: string | null
-          q_scores: Json
-          rank: number | null
-          score: number
-          subs: number
-          updated_at: string
-        }
-        Insert: {
-          acc: number
-          badges?: Json
-          bio?: string | null
-          cat?: string | null
-          certs?: Json
-          created_at?: string
-          gk: Database["public"]["Enums"]["grade_key"]
-          id?: number
-          name: string
-          preds?: number
-          profile_id?: string | null
-          q_scores?: Json
-          rank?: number | null
-          score: number
-          subs?: number
-          updated_at?: string
-        }
-        Update: {
-          acc?: number
-          badges?: Json
-          bio?: string | null
-          cat?: string | null
-          certs?: Json
-          created_at?: string
-          gk?: Database["public"]["Enums"]["grade_key"]
-          id?: number
-          name?: string
-          preds?: number
-          profile_id?: string | null
-          q_scores?: Json
-          rank?: number | null
-          score?: number
-          subs?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      feed_items: {
-        Row: {
-          acc: number | null
-          agk: Database["public"]["Enums"]["grade_key"] | null
-          author: string
-          cat: string | null
-          created_at: string
-          deadline_text: string | null
-          expert_id: number | null
-          id: number
-          preds: number
-          price: number
-          score: number | null
-          subscribe_only: boolean
-          title_parts: Json
-        }
-        Insert: {
-          acc?: number | null
-          agk?: Database["public"]["Enums"]["grade_key"] | null
-          author: string
-          cat?: string | null
-          created_at?: string
-          deadline_text?: string | null
-          expert_id?: number | null
-          id?: number
-          preds?: number
-          price?: number
-          score?: number | null
-          subscribe_only?: boolean
-          title_parts?: Json
-        }
-        Update: {
-          acc?: number | null
-          agk?: Database["public"]["Enums"]["grade_key"] | null
-          author?: string
-          cat?: string | null
-          created_at?: string
-          deadline_text?: string | null
-          expert_id?: number | null
-          id?: number
-          preds?: number
-          price?: number
-          score?: number | null
-          subscribe_only?: boolean
-          title_parts?: Json
-        }
-        Relationships: []
-      }
-      messages: {
-        Row: {
-          content: string
-          conversation_id: number
-          created_at: string
-          id: number
-          sender_id: string
-        }
-        Insert: {
-          content: string
-          conversation_id: number
-          created_at?: string
-          id?: number
-          sender_id: string
-        }
-        Update: {
-          content?: string
-          conversation_id?: number
-          created_at?: string
-          id?: number
-          sender_id?: string
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          body: string | null
-          created_at: string
-          id: number
-          is_read: boolean
-          link_data: Json | null
-          link_screen: string | null
-          title: string
-          type: Database["public"]["Enums"]["notif_type"]
-          user_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          id?: number
-          is_read?: boolean
-          link_data?: Json | null
-          link_screen?: string | null
-          title: string
-          type: Database["public"]["Enums"]["notif_type"]
-          user_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          id?: number
-          is_read?: boolean
-          link_data?: Json | null
-          link_screen?: string | null
-          title?: string
-          type?: Database["public"]["Enums"]["notif_type"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      point_transactions: {
-        Row: {
-          amount: number
-          balance_after: number
-          created_at: string
-          id: number
-          reason: string
-          ref_id: number | null
-          ref_type: string | null
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          balance_after: number
-          created_at?: string
-          id?: number
-          reason: string
-          ref_id?: number | null
-          ref_type?: string | null
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          balance_after?: number
-          created_at?: string
-          id?: number
-          reason?: string
-          ref_id?: number | null
-          ref_type?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      predictions: {
-        Row: {
-          a_label: string
-          a_ratio: number | null
-          author_acc: number | null
-          author_expert_id: number | null
-          author_gk: Database["public"]["Enums"]["grade_key"] | null
-          author_name: string | null
-          author_score: number | null
-          author_user_id: string | null
-          b_label: string
-          b_ratio: number | null
-          blind: boolean
-          cat: string
-          created_at: string
-          deadline_at: string | null
-          deadline_text: string | null
-          ea: string | null
-          eb: string | null
-          fail_p: number | null
-          hot: boolean
-          id: number
-          participants: number
-          price: number
-          q: string
-          result: Database["public"]["Enums"]["pred_choice"] | null
-          stage: Database["public"]["Enums"]["pred_stage"]
-          status: string | null
-          success_p: number | null
-          total_p: number | null
-          updated_at: string
-        }
-        Insert: {
-          a_label: string
-          a_ratio?: number | null
-          author_acc?: number | null
-          author_expert_id?: number | null
-          author_gk?: Database["public"]["Enums"]["grade_key"] | null
-          author_name?: string | null
-          author_score?: number | null
-          author_user_id?: string | null
-          b_label: string
-          b_ratio?: number | null
-          blind?: boolean
-          cat: string
-          created_at?: string
-          deadline_at?: string | null
-          deadline_text?: string | null
-          ea?: string | null
-          eb?: string | null
-          fail_p?: number | null
-          hot?: boolean
-          id?: number
-          participants?: number
-          price?: number
-          q: string
-          result?: Database["public"]["Enums"]["pred_choice"] | null
-          stage?: Database["public"]["Enums"]["pred_stage"]
-          status?: string | null
-          success_p?: number | null
-          total_p?: number | null
-          updated_at?: string
-        }
-        Update: {
-          a_label?: string
-          a_ratio?: number | null
-          author_acc?: number | null
-          author_expert_id?: number | null
-          author_gk?: Database["public"]["Enums"]["grade_key"] | null
-          author_name?: string | null
-          author_score?: number | null
-          author_user_id?: string | null
-          b_label?: string
-          b_ratio?: number | null
-          blind?: boolean
-          cat?: string
-          created_at?: string
-          deadline_at?: string | null
-          deadline_text?: string | null
-          ea?: string | null
-          eb?: string | null
-          fail_p?: number | null
-          hot?: boolean
-          id?: number
-          participants?: number
-          price?: number
-          q?: string
-          result?: Database["public"]["Enums"]["pred_choice"] | null
-          stage?: Database["public"]["Enums"]["pred_stage"]
-          status?: string | null
-          success_p?: number | null
-          total_p?: number | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          accuracy: number
-          avatar_url: string | null
-          badges: Json
-          bio: string | null
-          category: string | null
-          created_at: string
-          email: string | null
-          grade: Database["public"]["Enums"]["grade_key"]
-          handle: string
+          entry_price: number
+          event_slug: string
+          event_title: string
+          guest_session_id: string
           id: string
-          name: string | null
-          points: number
-          preds_count: number
-          score: number
-          subs_count: number
+          market_question: string
+          market_slug: string
+          outcome_index: number
+          outcome_label: string
+          realized_pnl: number | null
+          resolved_outcome_index: number | null
+          settled_at: string | null
+          shares: number
+          stake_amount: number
+          status: string
+          status_resolved: string
+          token_id: string
           updated_at: string
-          wallet: string | null
+          user_id: string | null
         }
         Insert: {
-          accuracy?: number
-          avatar_url?: string | null
-          badges?: Json
-          bio?: string | null
-          category?: string | null
           created_at?: string
-          email?: string | null
-          grade?: Database["public"]["Enums"]["grade_key"]
-          handle: string
-          id: string
-          name?: string | null
-          points?: number
-          preds_count?: number
-          score?: number
-          subs_count?: number
-          updated_at?: string
-          wallet?: string | null
-        }
-        Update: {
-          accuracy?: number
-          avatar_url?: string | null
-          badges?: Json
-          bio?: string | null
-          category?: string | null
-          created_at?: string
-          email?: string | null
-          grade?: Database["public"]["Enums"]["grade_key"]
-          handle?: string
+          entry_price: number
+          event_slug: string
+          event_title: string
+          guest_session_id: string
           id?: string
-          name?: string | null
-          points?: number
-          preds_count?: number
-          score?: number
-          subs_count?: number
+          market_question: string
+          market_slug: string
+          outcome_index: number
+          outcome_label: string
+          realized_pnl?: number | null
+          resolved_outcome_index?: number | null
+          settled_at?: string | null
+          shares: number
+          stake_amount: number
+          status?: string
+          status_resolved?: string
+          token_id: string
           updated_at?: string
-          wallet?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entry_price?: number
+          event_slug?: string
+          event_title?: string
+          guest_session_id?: string
+          id?: string
+          market_question?: string
+          market_slug?: string
+          outcome_index?: number
+          outcome_label?: string
+          realized_pnl?: number | null
+          resolved_outcome_index?: number | null
+          settled_at?: string | null
+          shares?: number
+          stake_amount?: number
+          status?: string
+          status_resolved?: string
+          token_id?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
-      reactions: {
+      user_profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
-          emoji: string
-          id: number
-          prediction_id: number
+          display_name: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
-          emoji: string
-          id?: number
-          prediction_id: number
+          display_name?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
-          emoji?: string
-          id?: number
-          prediction_id?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_predictions: {
-        Row: {
-          choice: Database["public"]["Enums"]["pred_choice"]
-          id: number
-          is_correct: boolean | null
-          prediction_id: number
-          sealed_at: string
-          user_id: string
-        }
-        Insert: {
-          choice: Database["public"]["Enums"]["pred_choice"]
-          id?: number
-          is_correct?: boolean | null
-          prediction_id: number
-          sealed_at?: string
-          user_id: string
-        }
-        Update: {
-          choice?: Database["public"]["Enums"]["pred_choice"]
-          id?: number
-          is_correct?: boolean | null
-          prediction_id?: number
-          sealed_at?: string
+          display_name?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -654,36 +134,85 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
-      charge_points: {
-        Args: { p_amount: number; p_reason: string; p_ref_id?: number; p_ref_type?: string }
-        Returns: number
+      create_paper_position: {
+        Args: {
+          p_entry_price: number
+          p_event_slug: string
+          p_event_title: string
+          p_guest_session_id: string
+          p_market_question: string
+          p_market_slug: string
+          p_outcome_index: number
+          p_outcome_label: string
+          p_shares: number
+          p_stake_amount: number
+          p_token_id: string
+          p_user_id: string | null
+        }
+        Returns: Database["public"]["Tables"]["paper_positions"]["Row"]
       }
-      start_conversation: { Args: { p_other_user: string }; Returns: number }
-      unlock_content: {
-        Args: { p_content_id: number; p_content_type: string; p_cost?: number; p_method: string }
+      get_profile_by_name: {
+        Args: { p_name: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          lost_count: number
+          realized_pnl: number
+          total_predictions: number
+          user_id: string
+          win_rate: number
+          won_count: number
+        }[]
+      }
+      get_user_stats: {
+        Args: { p_guest_session_id?: string | null; p_user_id?: string | null }
+        Returns: {
+          available_balance: number
+          lost_count: number
+          pending_count: number
+          pending_staked: number
+          realized_pnl: number
+          starting_balance: number
+          total_predictions: number
+          total_staked: number
+          win_rate: number
+          won_count: number
+        }[]
+      }
+      list_leaderboard: {
+        Args: { p_limit?: number }
+        Returns: {
+          display_name: string
+          lost_count: number
+          realized_pnl: number
+          total_predictions: number
+          user_id: string
+          win_rate: number
+          won_count: number
+        }[]
+      }
+      list_paper_positions: {
+        Args: {
+          p_guest_session_id: string
+          p_status_filter?: string | null
+          p_user_id?: string | null
+        }
+        Returns: Database["public"]["Tables"]["paper_positions"]["Row"][]
+      }
+      set_display_name: {
+        Args: { p_name: string }
+        Returns: Database["public"]["Tables"]["user_profiles"]["Row"]
+      }
+      settle_market: {
+        Args: {
+          p_event_slug: string
+          p_market_slug: string
+          p_winning_outcome_index: number
+        }
         Returns: number
       }
     }
-    Enums: {
-      challenge_status: "pending" | "approved" | "rejected"
-      event_status: "live" | "upcoming" | "ended"
-      grade_key: "candidate" | "forecaster" | "proven" | "seer"
-      notif_type:
-        | "pred_revealed"
-        | "expert_new_pred"
-        | "dm_received"
-        | "event_starting"
-        | "system"
-      pred_choice: "A" | "B"
-      pred_stage: "active" | "verify" | "done"
-    }
+    Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
   }
 }
-
-// 헬퍼 타입 — 테이블 Row 별 단축 alias
-export type Tables<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Row"];
-
-export type Enums<T extends keyof Database["public"]["Enums"]> =
-  Database["public"]["Enums"][T];

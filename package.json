@@ -9,15 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.105.1",
-    "@tanstack/react-query": "^5.100.9",
-    "@tanstack/react-query-devtools": "^5.100.9",
+    "@farcaster/mini-app-solana": "^1.1.3",
+    "@polymarket/clob-client-v2": "^1.0.5",
+    "@privy-io/react-auth": "^3.23.1",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.3",
     "lucide-react": "^1.14.0",
     "next": "^15.0.3",
+    "next-intl": "^4.11.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zustand": "^5.0.12"
+    "viem": "^2.47.12"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",

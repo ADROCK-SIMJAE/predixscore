@@ -1,0 +1,168 @@
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import {
+  PAPER_SESSION_COOKIE,
+  summarizePaperPosition,
+  type PaperPositionRow,
+} from "@/lib/paper";
+import { fetchEventBySlug } from "@/lib/polymarket";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+type CreatePaperPositionPayload = {
+  eventSlug: string;
+  eventTitle: string;
+  marketSlug: string;
+  marketQuestion: string;
+  tokenId: string;
+  outcomeIndex: number;
+  outcomeLabel: string;
+  entryPrice: number;
+  stakeAmount: number;
+};
+
+async function getPaperSessionId() {
+  const store = await cookies();
+  const existing = store.get(PAPER_SESSION_COOKIE)?.value;
+  if (existing) return { sessionId: existing, shouldSetCookie: false };
+  return { sessionId: crypto.randomUUID(), shouldSetCookie: true };
+}
+
+function withPaperCookie(response: NextResponse, sessionId: string, shouldSetCookie: boolean) {
+  if (shouldSetCookie) {
+    response.cookies.set(PAPER_SESSION_COOKIE, sessionId, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  return response;
+}
+
+export async function GET(request: Request) {
+  try {
+    const url = new URL(request.url);
+    const status = url.searchParams.get("status");
+    const { sessionId, shouldSetCookie } = await getPaperSessionId();
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase.rpc("list_paper_positions", {
+      p_guest_session_id: sessionId,
+      p_user_id: user?.id ?? null,
+      p_status_filter: status || null,
+    });
+
+    if (error) throw error;
+
+    const rows = (data ?? []) as PaperPositionRow[];
+    const uniqueEventSlugs = Array.from(new Set(rows.map((row) => row.event_slug)));
+    const eventEntries = await Promise.all(
+      uniqueEventSlugs.map(async (slug) => [slug, await fetchEventBySlug(slug)] as const),
+    );
+    const eventMap = new Map(eventEntries);
+    const positions = rows.map((row) => summarizePaperPosition(row, eventMap.get(row.event_slug) ?? null));
+    const totals = positions.reduce(
+      (acc, position) => {
+        acc.staked += position.stakeAmount;
+        acc.currentValue += position.currentValue ?? 0;
+        acc.pnl += position.pnlAmount ?? 0;
+        return acc;
+      },
+      { staked: 0, currentValue: 0, pnl: 0 },
+    );
+
+    return withPaperCookie(
+      NextResponse.json({
+        positions,
+        totals: {
+          ...totals,
+          pnlPercent: totals.staked > 0 ? totals.pnl / totals.staked : 0,
+        },
+        identity: {
+          userId: user?.id ?? null,
+          guestSessionId: sessionId,
+        },
+      }),
+      sessionId,
+      shouldSetCookie,
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Paper portfolio could not be loaded.",
+      },
+      { status: 502 },
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const payload = (await request.json()) as CreatePaperPositionPayload;
+    const { sessionId, shouldSetCookie } = await getPaperSessionId();
+
+    if (
+      !payload.eventSlug ||
+      !payload.eventTitle ||
+      !payload.marketSlug ||
+      !payload.marketQuestion ||
+      !payload.tokenId ||
+      !payload.outcomeLabel ||
+      !Number.isFinite(payload.entryPrice) ||
+      payload.entryPrice <= 0 ||
+      !Number.isFinite(payload.stakeAmount) ||
+      payload.stakeAmount <= 0 ||
+      !Number.isInteger(payload.outcomeIndex) ||
+      payload.outcomeIndex < 0
+    ) {
+      return NextResponse.json(
+        { error: "A complete paper prediction payload is required." },
+        { status: 400 },
+      );
+    }
+
+    const shares = Number((payload.stakeAmount / payload.entryPrice).toFixed(6));
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase.rpc("create_paper_position", {
+      p_guest_session_id: sessionId,
+      p_user_id: user?.id ?? null,
+      p_event_slug: payload.eventSlug,
+      p_event_title: payload.eventTitle,
+      p_market_slug: payload.marketSlug,
+      p_market_question: payload.marketQuestion,
+      p_token_id: payload.tokenId,
+      p_outcome_index: payload.outcomeIndex,
+      p_outcome_label: payload.outcomeLabel,
+      p_entry_price: payload.entryPrice,
+      p_stake_amount: payload.stakeAmount,
+      p_shares: shares,
+    });
+
+    if (error) throw error;
+
+    const row = data as PaperPositionRow;
+    const event = await fetchEventBySlug(row.event_slug);
+    const position = summarizePaperPosition(row, event);
+
+    return withPaperCookie(
+      NextResponse.json({ position }, { status: 201 }),
+      sessionId,
+      shouldSetCookie,
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Paper prediction could not be saved.",
+      },
+      { status: 502 },
+    );
+  }
+}
