@@ -179,12 +179,9 @@
     "signOut": "Sign out",
     "continueGoogle": "Continue with Google",
     "or": "or",
-    "emailLabel": "Email",
-    "emailPlaceholder": "you@example.com",
-    "emailInvalid": "Enter a valid email address.",
-    "emailSent": "Magic link sent to {email}. Check your inbox.",
-    "sending": "Sending…",
-    "sendMagicLink": "Send magic link",
+    "walletComingSoonLabel": "Wallet",
+    "walletComingSoonTitle": "Wallet sign-in coming soon",
+    "walletComingSoonDesc": "On-chain authentication via EVM wallet — support landing soon.",
     "legalNote": "By continuing you agree to use this paper-trading workspace responsibly. No real funds are at risk."
   },
   "displayName": {

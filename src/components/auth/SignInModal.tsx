@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Shield, Sparkles } from "lucide-react";
+import { Shield, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -45,23 +45,7 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
   const t = useTranslations("signin");
   const { user, signOut } = useAuth();
   const supabase = getBrowserSupabase();
-  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  async function handleEmail() {
-    if (!email.includes("@")) {
-      toast.error(t("emailInvalid"));
-      return;
-    }
-    setSubmitting(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/` },
-    });
-    setSubmitting(false);
-    if (error) toast.error(error.message);
-    else toast.success(t("emailSent", { email }));
-  }
 
   async function handleGoogle() {
     setSubmitting(true);
@@ -120,29 +104,28 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
             </div>
 
             <div className="grid gap-2.5">
-              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-                {t("emailLabel")}
-              </label>
-              <div className="flex items-center gap-2.5 rounded-xl border border-line bg-white/85 px-4 py-3 transition-[border-color,box-shadow] focus-within:border-accent/50 focus-within:shadow-[0_0_0_4px_rgba(15,109,255,0.1)]">
-                <Mail size={16} className="shrink-0 text-muted" />
-                <input
-                  type="email"
-                  className="flex-1 border-0 bg-transparent text-[15px] font-medium tracking-tight text-ink outline-none placeholder:font-normal placeholder:text-muted"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder={t("emailPlaceholder")}
-                  autoComplete="email"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleEmail}
-                disabled={submitting || !email}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[14px] font-semibold tracking-tight text-white transition-colors hover:bg-accent-mid disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/40"
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+                {t("walletComingSoonLabel")}
+              </span>
+              <div
+                aria-disabled="true"
+                className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl border border-dashed border-line/80 bg-ink/[0.02] px-4 py-3.5 text-left"
               >
-                <Sparkles size={16} />
-                {submitting ? t("sending") : t("sendMagicLink")}
-              </button>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent/8 text-accent">
+                  <Wallet size={16} />
+                </span>
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  <span className="text-[14px] font-semibold tracking-tight text-ink">
+                    {t("walletComingSoonTitle")}
+                  </span>
+                  <span className="truncate text-[12px] leading-snug text-muted">
+                    {t("walletComingSoonDesc")}
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-md bg-accent/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-accent-deep">
+                  Soon
+                </span>
+              </div>
             </div>
 
             <div className="flex items-start gap-2.5 rounded-xl border border-accent/10 bg-accent/[0.04] px-3.5 py-3 text-xs leading-relaxed text-muted-strong">

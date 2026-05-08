@@ -192,6 +192,15 @@ export function MarketDetailClient({
     return `${chartPath} L 760 220 L 0 220 Z`;
   }, [chartPath, history.length]);
 
+  const chartFlat = useMemo(() => {
+    if (history.length < 2) return null;
+    const values = history.map((p) => p.p);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (max - min >= 0.01) return null;
+    return values[values.length - 1];
+  }, [history]);
+
   const { user } = useAuth();
   const [signInOpen, setSignInOpen] = useState(false);
 
