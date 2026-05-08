@@ -8,7 +8,7 @@ const EMPTY_SNAPSHOT: HomeSnapshot = {
   featured: [],
   markets: [],
   watchSeed: [],
-  tags: ["All"],
+  tags: [],
   stats: {
     totalMarkets: 0,
     totalVolume: 0,

@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { LogIn, Mail, X } from "lucide-react";
+import { useState } from "react";
+import { LogIn, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type SignInModalProps = {
   open: boolean;
@@ -17,39 +24,20 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
   const supabase = getBrowserSupabase();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: "idle" | "success" | "error"; message: string }>({
-    tone: "idle",
-    message: "",
-  });
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
 
   async function handleEmail() {
     if (!email.includes("@")) {
-      setFeedback({ tone: "error", message: t("emailInvalid") });
+      toast.error(t("emailInvalid"));
       return;
     }
     setSubmitting(true);
-    setFeedback({ tone: "idle", message: "" });
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/` },
     });
     setSubmitting(false);
-    if (error) {
-      setFeedback({ tone: "error", message: error.message });
-    } else {
-      setFeedback({ tone: "success", message: t("emailSent", { email }) });
-    }
+    if (error) toast.error(error.message);
+    else toast.success(t("emailSent", { email }));
   }
 
   async function handleGoogle() {
@@ -60,28 +48,20 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
     });
     if (error) {
       setSubmitting(false);
-      setFeedback({ tone: "error", message: error.message });
+      toast.error(error.message);
     }
   }
 
   return (
-    <div className="bet-modal-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="bet-modal signin-modal" onClick={(e) => e.stopPropagation()}>
-        <header className="bet-modal-head">
-          <div>
-            <span className="eyebrow">{t("eyebrow")}</span>
-            <h2>{user ? t("signedInAs", { email: user.email ?? "" }) : t("title")}</h2>
-            {!user ? <p className="signin-copy">{t("copy")}</p> : null}
-          </div>
-          <button
-            type="button"
-            className="bet-modal-close"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-        </header>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="grid gap-4 p-6">
+        <DialogHeader>
+          <span className="eyebrow">{t("eyebrow")}</span>
+          <DialogTitle>
+            {user ? t("signedInAs", { email: user.email ?? "" }) : t("title")}
+          </DialogTitle>
+          {!user ? <p className="signin-copy">{t("copy")}</p> : null}
+        </DialogHeader>
 
         {user ? (
           <button
@@ -96,7 +76,12 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
           </button>
         ) : (
           <>
-            <button type="button" className="solid-button" onClick={handleGoogle} disabled={submitting}>
+            <button
+              type="button"
+              className="solid-button inline-flex items-center justify-center gap-2"
+              onClick={handleGoogle}
+              disabled={submitting}
+            >
               <LogIn size={16} />
               {t("continueGoogle")}
             </button>
@@ -128,14 +113,10 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
               </button>
             </div>
 
-            {feedback.tone !== "idle" ? (
-              <div className={`feedback-box ${feedback.tone}`}>{feedback.message}</div>
-            ) : null}
-
-            <p className="footer-note">{t("legalNote")}</p>
+            <p className="text-xs text-muted">{t("legalNote")}</p>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

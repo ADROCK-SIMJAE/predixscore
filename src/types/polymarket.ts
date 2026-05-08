@@ -1,5 +1,12 @@
 export type MarketSort = "trending" | "liquidity" | "ending" | "new";
 
+export type DirectoryTag = {
+  id: string;
+  slug: string;
+  label: string;
+  eventCount?: number;
+};
+
 export type MarketSnapshot = {
   id: string;
   slug: string;
@@ -27,6 +34,12 @@ export type MarketSnapshot = {
   outcomePrices: number[];
   minimumTickSize: string;
   negRisk: boolean;
+  tags: DirectoryTag[];
+  competitive: number;
+  volume1wk: number;
+  volume1mo: number;
+  creationDate: string | null;
+  isNew: boolean;
 };
 
 export type EventDetail = {
@@ -44,6 +57,11 @@ export type EventDetail = {
   openInterest: number;
   liquidity: number;
   volume: number;
+  volume24h: number;
+  volume1wk: number;
+  volume1mo: number;
+  competitive: number;
+  isNew: boolean;
   markets: MarketSnapshot[];
 };
 
@@ -51,7 +69,7 @@ export type HomeSnapshot = {
   featured: MarketSnapshot[];
   markets: MarketSnapshot[];
   watchSeed: MarketSnapshot[];
-  tags: string[];
+  tags: DirectoryTag[];
   stats: {
     totalMarkets: number;
     totalVolume: number;

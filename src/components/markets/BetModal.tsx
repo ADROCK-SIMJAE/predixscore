@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, X } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { clamp, formatCurrency, formatPercent } from "@/lib/format";
 import type { MarketSnapshot } from "@/types/polymarket";
 
@@ -17,8 +24,6 @@ type BetModalProps = {
   onSuccess?: () => void;
 };
 
-type FeedbackTone = "idle" | "success" | "error" | "warning";
-
 const STAKE_PRESETS = [10, 25, 100, 500];
 
 export function BetModal({
@@ -32,43 +37,22 @@ export function BetModal({
   onSuccess,
 }: BetModalProps) {
   const t = useTranslations("betModal");
-  const tCommon = useTranslations("common");
 
   const [outcomeIndex, setOutcomeIndex] = useState(initialOutcomeIndex);
   const [stake, setStake] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [availableBalance, setAvailableBalance] = useState<number>(10000);
-  const [feedback, setFeedback] = useState<{ tone: FeedbackTone; message: string }>({
-    tone: "idle",
-    message: "",
-  });
 
   useEffect(() => {
     if (open) {
       setOutcomeIndex(initialOutcomeIndex);
       setStake("");
-      setFeedback({ tone: "idle", message: "" });
-      // Refresh available balance whenever modal opens
       fetch("/api/paper/stats")
         .then((r) => r.json())
         .then((d) => setAvailableBalance(d.stats?.availableBalance ?? 10000))
         .catch(() => {});
     }
   }, [open, initialOutcomeIndex, market.id]);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, onClose]);
 
   const livePrice = clamp(market.outcomePrices[outcomeIndex] ?? 0, 0, 1);
   const outcomeLabel = market.outcomes[outcomeIndex] ?? "Yes";
@@ -101,7 +85,6 @@ export function BetModal({
   async function submit() {
     if (!canSubmit) return;
     setSubmitting(true);
-    setFeedback({ tone: "idle", message: "" });
 
     try {
       const response = await fetch("/api/paper/positions", {
@@ -122,34 +105,31 @@ export function BetModal({
 
       const data = await response.json();
       if (!response.ok) {
-        setFeedback({
-          tone: response.status === 501 ? "warning" : "error",
-          message: data.error ?? t("saveFail"),
-        });
+        const tone = response.status === 501 ? "warning" : "error";
+        const message = data.error ?? t("saveFail");
+        if (tone === "warning") {
+          toast.warning(message);
+        } else {
+          toast.error(message);
+        }
         return;
       }
 
-      setFeedback({
-        tone: "success",
-        message: t("saveSuccess", {
+      toast.success(
+        t("saveSuccess", {
           outcome: outcomeLabel,
           price: Math.round(livePrice * 100),
           amount: formatCurrency(numericStake),
         }),
-      });
+      );
       onSuccess?.();
-      window.setTimeout(() => onClose(), 700);
+      onClose();
     } catch (error) {
-      setFeedback({
-        tone: "error",
-        message: error instanceof Error ? error.message : t("saveFail"),
-      });
+      toast.error(error instanceof Error ? error.message : t("saveFail"));
     } finally {
       setSubmitting(false);
     }
   }
-
-  if (!open) return null;
 
   const submitLabel = submitting
     ? t("saving")
@@ -160,72 +140,81 @@ export function BetModal({
         : t("predictCta", { outcome: outcomeLabel, amount: formatCurrency(numericStake) });
 
   return (
-    <div className="bet-modal-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="bet-modal" onClick={(event) => event.stopPropagation()}>
-        <header className="bet-modal-head">
-          <div>
-            <span className="eyebrow">{t("eyebrow")}</span>
-            <h2>{market.question}</h2>
-          </div>
-          <button
-            type="button"
-            className="bet-modal-close"
-            aria-label={tCommon("close")}
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-        </header>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="grid gap-4 p-6">
+        <DialogHeader>
+          <span className="text-muted text-[12px] tracking-[0.14em] uppercase">{t("eyebrow")}</span>
+          <DialogTitle>{market.question}</DialogTitle>
+        </DialogHeader>
 
-        <div className="bet-modal-toggle">
+        {/* Yes/No toggle */}
+        <div className="grid grid-cols-2 gap-2.5">
           <button
             type="button"
-            className={`bet-toggle yes ${outcomeIndex === 0 ? "active" : ""}`}
+            className={`px-4 py-3.5 rounded-[12px] border-2 cursor-pointer grid gap-1 text-left bg-white/70 transition-all duration-160 active:scale-[0.98] will-change-transform ${
+              outcomeIndex === 0
+                ? "bg-gradient-to-b from-[rgba(15,169,104,0.18)] to-[rgba(15,169,104,0.04)] border-[rgba(15,169,104,0.5)] text-[#0e6d44]"
+                : "border-transparent"
+            }`}
             onClick={() => setOutcomeIndex(0)}
           >
-            <span>Yes</span>
-            <strong>{yesPercent}%</strong>
-            <em>{t("yesChance", { percent: formatPercent(market.outcomePrices[0] ?? 0) })}</em>
+            <span className={`text-[13px] uppercase tracking-[0.06em] font-semibold ${outcomeIndex === 0 ? "text-[#0e6d44]" : "text-muted"}`}>Yes</span>
+            <strong className={`text-[30px] tracking-[-0.03em] tabular-nums ${outcomeIndex === 0 ? "text-[#0e6d44]" : ""}`}>{yesPercent}%</strong>
+            <em className={`not-italic text-[12px] ${outcomeIndex === 0 ? "text-[#0e6d44]" : "text-muted"}`}>
+              {t("yesChance", { percent: formatPercent(market.outcomePrices[0] ?? 0) })}
+            </em>
           </button>
           {market.outcomes[1] ? (
             <button
               type="button"
-              className={`bet-toggle no ${outcomeIndex === 1 ? "active" : ""}`}
+              className={`px-4 py-3.5 rounded-[12px] border-2 cursor-pointer grid gap-1 text-left bg-white/70 transition-all duration-160 active:scale-[0.98] will-change-transform ${
+                outcomeIndex === 1
+                  ? "bg-gradient-to-b from-[rgba(239,91,97,0.18)] to-[rgba(239,91,97,0.04)] border-[rgba(239,91,97,0.5)] text-[#b13036]"
+                  : "border-transparent"
+              }`}
               onClick={() => setOutcomeIndex(1)}
             >
-              <span>No</span>
-              <strong>{noPercent}%</strong>
-              <em>{t("noChance", { percent: formatPercent(market.outcomePrices[1] ?? 0) })}</em>
+              <span className={`text-[13px] uppercase tracking-[0.06em] font-semibold ${outcomeIndex === 1 ? "text-[#b13036]" : "text-muted"}`}>No</span>
+              <strong className={`text-[30px] tracking-[-0.03em] tabular-nums ${outcomeIndex === 1 ? "text-[#b13036]" : ""}`}>{noPercent}%</strong>
+              <em className={`not-italic text-[12px] ${outcomeIndex === 1 ? "text-[#b13036]" : "text-muted"}`}>
+                {t("noChance", { percent: formatPercent(market.outcomePrices[1] ?? 0) })}
+              </em>
             </button>
           ) : null}
         </div>
 
-        <div className="bet-modal-section">
-          <div className="bet-modal-label-row">
-            <label className="bet-modal-label">{t("stakeLabel")}</label>
-            <span className="bet-modal-balance">
+        {/* Stake input section */}
+        <div className="grid gap-2.5">
+          <div className="flex items-center justify-between">
+            <label className="text-[12px] uppercase tracking-[0.08em] text-muted font-semibold">{t("stakeLabel")}</label>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[rgba(15,169,104,0.10)] text-[#0e6d44] text-[12px] font-semibold tabular-nums">
               <Wallet size={12} />
               {formatCurrency(availableBalance)} {t("available")}
             </span>
           </div>
-          <div className={`bet-modal-stake-row ${!sufficientBalance && validStake ? "error" : ""}`}>
-            <span className="bet-modal-currency-prefix">$</span>
+          <div className={`flex items-center gap-2 px-[18px] py-3.5 rounded-[16px] bg-white/[0.85] border transition-colors duration-160 ${!sufficientBalance && validStake ? "border-[rgba(239,91,97,0.4)] bg-[rgba(239,91,97,0.04)]" : "border-ink/[0.08]"}`}>
+            <span className="text-muted text-[22px] font-semibold mr-1">$</span>
             <input
-              className="bet-modal-stake-input"
+              className="flex-1 border-none bg-transparent outline-none text-[28px] font-semibold tracking-[-0.02em] text-ink tabular-nums"
               value={stake}
               onChange={(event) => setStake(event.target.value.replace(/[^\d.]/g, ""))}
               placeholder={t("stakePlaceholder")}
               inputMode="decimal"
               autoFocus
             />
-            <span className="bet-modal-currency">{t("currency")}</span>
+            <span className="text-[13px] text-muted font-semibold tracking-[0.06em]">{t("currency")}</span>
           </div>
-          <div className="bet-modal-presets">
+          {/* Presets */}
+          <div className="grid grid-cols-4 gap-1.5">
             {presetCards.map((preset) => (
               <button
                 key={preset.amount}
                 type="button"
-                className={`bet-preset ${numericStake === preset.amount ? "active" : ""}`}
+                className={`py-2.5 rounded-[12px] border font-semibold text-[14px] cursor-pointer transition-all duration-160 tabular-nums will-change-transform active:scale-[0.98] disabled:opacity-40 ${
+                  numericStake === preset.amount
+                    ? "bg-gradient-to-b from-[rgba(15,109,255,0.16)] to-[rgba(15,109,255,0.04)] border-[rgba(15,109,255,0.5)] text-[#0a3d8f]"
+                    : "bg-white/60 border-ink/[0.08] text-ink hover:bg-[rgba(15,109,255,0.06)] hover:border-[rgba(15,109,255,0.32)]"
+                }`}
                 onClick={() => setStake(String(preset.amount))}
                 disabled={preset.amount > availableBalance}
               >
@@ -235,44 +224,45 @@ export function BetModal({
           </div>
         </div>
 
-        <div className="bet-modal-summary">
-          <div>
-            <span>{t("summaryAvgPrice")}</span>
-            <strong>{Math.round(livePrice * 100)}%</strong>
+        {/* Summary */}
+        <div className="grid grid-cols-2 gap-2 p-[14px_16px] rounded-[14px] bg-accent/[0.04] border border-accent/[0.10]">
+          <div className="grid gap-0.5">
+            <span className="text-[11px] text-muted uppercase tracking-[0.06em]">{t("summaryAvgPrice")}</span>
+            <strong className="text-[16px] tabular-nums tracking-[-0.01em]">{Math.round(livePrice * 100)}%</strong>
           </div>
-          <div>
-            <span>{t("summaryShares")}</span>
-            <strong>{shares > 0 ? shares.toFixed(2) : "—"}</strong>
+          <div className="grid gap-0.5">
+            <span className="text-[11px] text-muted uppercase tracking-[0.06em]">{t("summaryShares")}</span>
+            <strong className="text-[16px] tabular-nums tracking-[-0.01em]">{shares > 0 ? shares.toFixed(2) : "—"}</strong>
           </div>
-          <div>
-            <span>{t("summaryPayoutIf", { outcome: outcomeLabel })}</span>
-            <strong>{shares > 0 ? formatCurrency(shares) : "—"}</strong>
+          <div className="grid gap-0.5">
+            <span className="text-[11px] text-muted uppercase tracking-[0.06em]">{t("summaryPayoutIf", { outcome: outcomeLabel })}</span>
+            <strong className="text-[16px] tabular-nums tracking-[-0.01em]">{shares > 0 ? formatCurrency(shares) : "—"}</strong>
           </div>
-          <div>
-            <span>{t("summaryProfitIf", { outcome: outcomeLabel })}</span>
-            <strong className={profit > 0 ? "profit-positive" : ""}>
+          <div className="grid gap-0.5">
+            <span className="text-[11px] text-muted uppercase tracking-[0.06em]">{t("summaryProfitIf", { outcome: outcomeLabel })}</span>
+            <strong className={`text-[16px] tabular-nums tracking-[-0.01em] ${profit > 0 ? "text-positive-text" : ""}`}>
               {profit > 0 ? `+${formatCurrency(profit)}` : "—"}
             </strong>
           </div>
         </div>
 
         {!paperTradingConfigured ? (
-          <div className="feedback-box warning">{t("storageWarning")}</div>
-        ) : null}
-
-        {feedback.tone !== "idle" ? (
-          <div className={`feedback-box ${feedback.tone}`}>{feedback.message}</div>
+          <div className="px-4 py-3.5 rounded-[14px] text-[14px] leading-[1.5] bg-[rgba(244,173,66,0.16)] text-[#91590b]">{t("storageWarning")}</div>
         ) : null}
 
         <button
           type="button"
-          className={`bet-submit ${outcomeIndex === 0 ? "yes" : "no"}`}
+          className={`w-full py-3.5 rounded-[8px] border-none cursor-pointer font-bold text-[15px] tracking-[-0.01em] text-white transition-colors duration-160 tabular-nums disabled:bg-ink/10 disabled:text-ink/40 disabled:cursor-not-allowed ${
+            outcomeIndex === 0
+              ? "bg-[#0fa968] hover:enabled:bg-[#0d8e58]"
+              : "bg-[#ef5b61] hover:enabled:bg-[#d44850]"
+          }`}
           disabled={!canSubmit}
           onClick={submit}
         >
           {submitLabel}
         </button>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { LocaleToggle } from "@/components/i18n/LocaleToggle";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { PositionsList } from "@/components/portfolio/PositionsList";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import type { PaperPositionSummary } from "@/lib/paper";
@@ -69,34 +69,23 @@ export default function PositionsPage() {
   const tabs: StatusTab[] = ["all", "pending", "won", "lost"];
 
   return (
-    <main className="page-shell">
-      <header className="shell-header glass-panel">
-        <div className="brand-row">
-          <Link
-            href="/"
-            className="ghost-button"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-          >
-            <ArrowLeft size={16} />
-            Markets
-          </Link>
-          <div className="brand-copy">
-            <span className="eyebrow">{t("eyebrow")}</span>
-            <h1 className="brand-title">{t("title")}</h1>
-          </div>
-        </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={manualSettle}
-            disabled={settling}
-          >
-            {settling ? t("settling") : t("settleNow")}
-          </button>
-          <LocaleToggle />
-        </div>
-      </header>
+    <>
+      <AppHeader />
+      <main className="page-shell">
+        <PageHeader
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          right={
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={manualSettle}
+              disabled={settling}
+            >
+              {settling ? t("settling") : t("settleNow")}
+            </button>
+          }
+        />
 
       {stats ? (
         <div className="balance-hero glass-panel">
@@ -119,7 +108,7 @@ export default function PositionsPage() {
             </div>
             <div>
               <span>{tBalance("realized")}</span>
-              <strong className={Math.round(stats.realizedPnl * 100) > 0 ? "profit-positive" : ""}>
+              <strong className={Math.round(stats.realizedPnl * 100) > 0 ? "text-positive-text" : ""}>
                 {Math.round(stats.realizedPnl * 100) > 0
                   ? `+${formatCurrency(stats.realizedPnl)}`
                   : formatCurrency(Math.abs(Math.round(stats.realizedPnl * 100)) === 0 ? 0 : stats.realizedPnl)}
@@ -145,12 +134,16 @@ export default function PositionsPage() {
         </div>
       ) : null}
 
-      <div className="positions-tabs">
+      <div className="flex flex-wrap gap-2.5">
         {tabs.map((value) => (
           <button
             key={value}
             type="button"
-            className={`chip-button ${tab === value ? "active" : ""}`}
+            className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+              tab === value
+                ? "bg-[linear-gradient(135deg,#0f6dff_0%,#42a0ff_100%)] text-white shadow-[0_8px_24px_rgba(15,109,255,0.24)]"
+                : "bg-white/65 text-[var(--muted-strong)] hover:bg-white/90"
+            }`}
             onClick={() => setTab(value)}
           >
             {t(`tab.${value}`)}
@@ -165,6 +158,7 @@ export default function PositionsPage() {
       ) : (
         <PositionsList positions={data?.positions ?? []} />
       )}
-    </main>
+      </main>
+    </>
   );
 }
