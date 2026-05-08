@@ -131,9 +131,16 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    if (!user) {
+      return NextResponse.json(
+        { error: "Sign in required to make a prediction." },
+        { status: 401 },
+      );
+    }
+
     const { data, error } = await supabase.rpc("create_paper_position", {
       p_guest_session_id: sessionId,
-      p_user_id: user?.id ?? null,
+      p_user_id: user.id,
       p_event_slug: payload.eventSlug,
       p_event_title: payload.eventTitle,
       p_market_slug: payload.marketSlug,

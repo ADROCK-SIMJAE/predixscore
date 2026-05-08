@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { formatCurrency } from "@/lib/format";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 type StatsResponse = {
   stats: {
@@ -16,10 +17,15 @@ type StatsResponse = {
 
 export function BalanceChip({ refreshKey }: { refreshKey?: number }) {
   const t = useTranslations("balance");
+  const { user, loading } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
   const [pendingStaked, setPendingStaked] = useState<number>(0);
 
   useEffect(() => {
+    if (!user) {
+      setBalance(null);
+      return;
+    }
     fetch("/api/paper/stats")
       .then((r) => r.json() as Promise<StatsResponse>)
       .then((d) => {
@@ -27,9 +33,9 @@ export function BalanceChip({ refreshKey }: { refreshKey?: number }) {
         setPendingStaked(d.stats?.pendingStaked ?? 0);
       })
       .catch(() => setBalance(10000));
-  }, [refreshKey]);
+  }, [refreshKey, user]);
 
-  if (balance === null) return null;
+  if (loading || !user || balance === null) return null;
 
   return (
     <Link

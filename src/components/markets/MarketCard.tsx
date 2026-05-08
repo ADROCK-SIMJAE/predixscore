@@ -10,6 +10,8 @@ import {
   formatRelativeWindow,
 } from "@/lib/format";
 import type { MarketSnapshot } from "@/types/polymarket";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { SignInModal } from "@/components/auth/SignInModal";
 import { BetModal } from "./BetModal";
 
 type MarketCardProps = {
@@ -18,6 +20,7 @@ type MarketCardProps = {
   onToggleWatchlist: (slug: string) => void;
   paperTradingConfigured: boolean;
   onPredictionSaved?: () => void;
+  onRequireSignIn?: () => void;
 };
 
 export function MarketCard({
@@ -26,9 +29,12 @@ export function MarketCard({
   onToggleWatchlist,
   paperTradingConfigured,
   onPredictionSaved,
+  onRequireSignIn,
 }: MarketCardProps) {
   const t = useTranslations("card");
+  const { user } = useAuth();
   const [betOpen, setBetOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const [side, setSide] = useState<0 | 1>(0);
 
   const eventHref = `/event/${market.eventSlug}?market=${market.marketSlug}`;
@@ -45,6 +51,11 @@ export function MarketCard({
   function openBet(nextSide: 0 | 1, event: React.MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
+    if (!user) {
+      if (onRequireSignIn) onRequireSignIn();
+      else setSignInOpen(true);
+      return;
+    }
     setSide(nextSide);
     setBetOpen(true);
   }
@@ -168,6 +179,7 @@ export function MarketCard({
         paperTradingConfigured={paperTradingConfigured}
         onSuccess={onPredictionSaved}
       />
+      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
     </>
   );
 }

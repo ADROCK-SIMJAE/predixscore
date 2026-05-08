@@ -18,13 +18,17 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="grid gap-4 p-6">
-        <DialogHeader>
-          <span className="eyebrow">{t("eyebrow")}</span>
-          <DialogTitle>{t("title")}</DialogTitle>
-          <p className="signin-copy">{t("copy")}</p>
+      <DialogContent className="grid gap-4 p-6 sm:max-w-[420px]">
+        <DialogHeader className="space-y-2 text-left">
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+            {t("eyebrow")}
+          </span>
+          <DialogTitle className="font-display text-2xl font-bold tracking-tight text-ink">
+            {t("title")}
+          </DialogTitle>
+          <p className="m-0 text-sm leading-relaxed text-muted-strong">{t("copy")}</p>
         </DialogHeader>
-        <p className="footer-note text-xs text-muted">{t("currentBuild")}</p>
+        <p className="text-xs leading-relaxed text-muted">{t("currentBuild")}</p>
       </DialogContent>
     </Dialog>
   );

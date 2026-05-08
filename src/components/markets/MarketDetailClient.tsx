@@ -190,12 +190,19 @@ export function MarketDetailClient({
     return `${chartPath} L 760 220 L 0 220 Z`;
   }, [chartPath, history.length]);
 
+  const { user } = useAuth();
+  const [signInOpen, setSignInOpen] = useState(false);
+
   function openBet(targetMarketIndex: number, side: 0 | 1) {
+    setMarketIndex(targetMarketIndex);
+    setOutcomeIndex(side);
+    if (!user) {
+      setSignInOpen(true);
+      return;
+    }
     setBetMarketIndex(targetMarketIndex);
     setBetSide(side);
     setBetOpen(true);
-    setMarketIndex(targetMarketIndex);
-    setOutcomeIndex(side);
   }
 
   return (
