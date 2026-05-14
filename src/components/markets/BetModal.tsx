@@ -26,6 +26,34 @@ type BetModalProps = {
 
 const STAKE_PRESETS = [10, 25, 100, 500];
 
+function getOutcomeAvailability(market: MarketSnapshot, outcomeIndex: number) {
+  const rawPrice = market.outcomePrices[outcomeIndex];
+  const tokenId = market.clobTokenIds[outcomeIndex] ?? "";
+  const outcomeLabel = market.outcomes[outcomeIndex] ?? "";
+  const validPrice = Number.isFinite(rawPrice) && rawPrice > 0 && rawPrice <= 1;
+
+  return {
+    outcomeLabel,
+    tokenId,
+    price: validPrice ? rawPrice : 0,
+    available:
+      market.active &&
+      !market.closed &&
+      Boolean(outcomeLabel) &&
+      Boolean(tokenId) &&
+      validPrice,
+    reason: !market.active || market.closed
+      ? "marketClosed"
+      : !outcomeLabel
+        ? "outcomeUnavailable"
+        : !tokenId
+          ? "tokenUnavailable"
+          : !validPrice
+            ? "priceUnavailable"
+            : null,
+  };
+}
+
 export function BetModal({
   open,
   onClose,
@@ -54,9 +82,10 @@ export function BetModal({
     }
   }, [open, initialOutcomeIndex, market.id]);
 
-  const livePrice = clamp(market.outcomePrices[outcomeIndex] ?? 0, 0, 1);
-  const outcomeLabel = market.outcomes[outcomeIndex] ?? "Yes";
-  const tokenId = market.clobTokenIds[outcomeIndex] ?? "";
+  const outcomeAvailability = getOutcomeAvailability(market, outcomeIndex);
+  const livePrice = clamp(outcomeAvailability.price, 0, 1);
+  const outcomeLabel = outcomeAvailability.outcomeLabel || "Yes";
+  const tokenId = outcomeAvailability.tokenId;
   const numericStake = Number(stake);
   const validStake = Number.isFinite(numericStake) && numericStake > 0;
   const sufficientBalance = numericStake <= availableBalance + 0.0001;
@@ -65,8 +94,7 @@ export function BetModal({
   const canSubmit =
     validStake &&
     sufficientBalance &&
-    livePrice > 0 &&
-    Boolean(tokenId) &&
+    outcomeAvailability.available &&
     paperTradingConfigured &&
     !submitting;
 
@@ -115,10 +143,12 @@ export function BetModal({
         return;
       }
 
+      const savedPrice =
+        typeof data.position?.entryPrice === "number" ? data.position.entryPrice : livePrice;
       toast.success(
         t("saveSuccess", {
           outcome: outcomeLabel,
-          price: Math.round(livePrice * 100),
+          price: Math.round(savedPrice * 100),
           amount: formatCurrency(numericStake),
         }),
       );
@@ -133,6 +163,8 @@ export function BetModal({
 
   const submitLabel = submitting
     ? t("saving")
+    : outcomeAvailability.reason
+      ? t(outcomeAvailability.reason)
     : !validStake
       ? t("enterStake")
       : !sufficientBalance
@@ -248,6 +280,12 @@ export function BetModal({
 
         {!paperTradingConfigured ? (
           <div className="px-4 py-3.5 rounded-[14px] text-[14px] leading-[1.5] bg-[rgba(244,173,66,0.16)] text-[#91590b]">{t("storageWarning")}</div>
+        ) : null}
+
+        {outcomeAvailability.reason ? (
+          <div className="px-4 py-3.5 rounded-[14px] text-[14px] leading-[1.5] bg-[rgba(244,173,66,0.16)] text-[#91590b]">
+            {t("unsupportedWarning", { reason: t(outcomeAvailability.reason) })}
+          </div>
         ) : null}
 
         <button

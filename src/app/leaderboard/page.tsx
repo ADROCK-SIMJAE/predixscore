@@ -58,7 +58,7 @@ export default function LeaderboardPage() {
               {entries.map((entry, index) => (
                 <Link
                   key={entry.userId}
-                  className="grid [grid-template-columns:40px_minmax(0,1.4fr)_90px_100px_110px] gap-3.5 items-center px-3.5 py-3 rounded-[14px] bg-white/70 border border-ink/[0.06] no-underline text-inherit tabular-nums transition-[transform,background] duration-[160ms] hover:bg-white/95 hover:-translate-y-px max-[720px]:[grid-template-columns:32px_minmax(0,1fr)_70px_100px]"
+                  className="grid [grid-template-columns:40px_minmax(0,1.4fr)_90px_100px_110px] gap-3.5 items-center px-3.5 py-3 rounded-[14px] bg-white/70 border border-ink/[0.06] no-underline text-inherit tabular-nums transition-[transform,background] duration-150 hover:bg-white/95 hover:-translate-y-px max-[720px]:[grid-template-columns:32px_minmax(0,1fr)_70px_100px]"
                   href={`/profile/${encodeURIComponent(entry.displayName)}`}
                 >
                   <strong

@@ -32,7 +32,7 @@ export function LocaleToggle() {
           <button
             key={locale}
             type="button"
-            className={`rounded-full border-0 px-[11px] py-[5px] text-xs font-semibold tracking-[0.02em] transition-[background-color,color] duration-[160ms] ease-linear ${
+            className={`rounded-full border-0 px-[11px] py-[5px] text-xs font-semibold tracking-[0.02em] transition-[background-color,color] duration-150 ease-linear ${
               isActive
                 ? "bg-accent text-white"
                 : "cursor-pointer bg-transparent text-muted-strong hover:bg-[rgba(16,44,75,0.05)] hover:text-ink disabled:cursor-default disabled:opacity-40"

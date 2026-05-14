@@ -5,7 +5,7 @@
 - **State**: Zustand (UI/Auth) + TanStack Query (서버 상태)
 - **Backend**: Supabase (Postgres + Auth + RLS)
 - **DB Access**: `@supabase/supabase-js` 브라우저 직결 (RLS 의존)
-- **Future**: Prisma 전환 옵션 (`docs/prisma-migration.md` 참조)
+- **Future**: Prisma 전환 옵션 (`docs/archive/prisma-migration.md` 참조)
 
 ## 디렉토리 구조
 

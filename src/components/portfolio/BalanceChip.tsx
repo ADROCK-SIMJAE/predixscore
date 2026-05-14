@@ -40,7 +40,7 @@ export function BalanceChip({ refreshKey }: { refreshKey?: number }) {
   return (
     <Link
       href="/positions"
-      className="inline-flex h-[38px] items-center gap-2 rounded-full border border-[rgba(16,44,75,0.06)] bg-white/60 px-4 text-[13px] font-semibold tracking-tight text-ink no-underline tabular-nums transition-[transform,background-color,border-color] duration-[160ms] ease-linear hover:-translate-y-px hover:border-[rgba(16,44,75,0.1)] hover:bg-white/95 [&_svg]:text-positive-text"
+      className="inline-flex h-[38px] items-center gap-2 rounded-full border border-[rgba(16,44,75,0.06)] bg-white/60 px-4 text-[13px] font-semibold tracking-tight text-ink no-underline tabular-nums transition-[transform,background-color,border-color] duration-150 ease-linear hover:-translate-y-px hover:border-[rgba(16,44,75,0.1)] hover:bg-white/95 [&_svg]:text-positive-text"
       title={t("tooltip", { locked: formatCurrency(pendingStaked) })}
     >
       <Wallet size={14} />

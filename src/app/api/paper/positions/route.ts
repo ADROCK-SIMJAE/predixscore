@@ -20,6 +20,45 @@ type CreatePaperPositionPayload = {
   stakeAmount: number;
 };
 
+async function validatePaperMarketPayload(payload: CreatePaperPositionPayload) {
+  const event = await fetchEventBySlug(payload.eventSlug);
+  if (!event) {
+    return { ok: false, error: "Market event could not be verified." };
+  }
+
+  const market = event.markets.find((entry) => entry.marketSlug === payload.marketSlug);
+  if (!market) {
+    return { ok: false, error: "Market could not be verified." };
+  }
+
+  if (!market.active || market.closed) {
+    return { ok: false, error: "This market is closed or inactive." };
+  }
+
+  const tokenId = market.clobTokenIds[payload.outcomeIndex];
+  const outcomeLabel = market.outcomes[payload.outcomeIndex];
+  const currentPrice = market.outcomePrices[payload.outcomeIndex];
+
+  if (!tokenId || tokenId !== payload.tokenId) {
+    return { ok: false, error: "Outcome token could not be verified." };
+  }
+
+  if (!outcomeLabel || outcomeLabel !== payload.outcomeLabel) {
+    return { ok: false, error: "Outcome label could not be verified." };
+  }
+
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0 || currentPrice > 1) {
+    return { ok: false, error: "Outcome price is not available." };
+  }
+
+  return {
+    ok: true,
+    event,
+    market,
+    price: currentPrice,
+  };
+}
+
 async function getPaperSessionId() {
   const store = await cookies();
   const existing = store.get(PAPER_SESSION_COOKIE)?.value;
@@ -125,7 +164,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const shares = Number((payload.stakeAmount / payload.entryPrice).toFixed(6));
     const supabase = await createServerSupabaseClient();
     const {
       data: { user },
@@ -138,6 +176,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const verified = await validatePaperMarketPayload(payload);
+    if (!verified.ok) {
+      return NextResponse.json({ error: verified.error }, { status: 400 });
+    }
+
+    const shares = Number((payload.stakeAmount / verified.price).toFixed(6));
+
     const { data, error } = await supabase.rpc("create_paper_position", {
       p_guest_session_id: sessionId,
       p_user_id: user.id,
@@ -148,7 +193,7 @@ export async function POST(request: Request) {
       p_token_id: payload.tokenId,
       p_outcome_index: payload.outcomeIndex,
       p_outcome_label: payload.outcomeLabel,
-      p_entry_price: payload.entryPrice,
+      p_entry_price: verified.price,
       p_stake_amount: payload.stakeAmount,
       p_shares: shares,
     });
@@ -156,8 +201,7 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     const row = data as PaperPositionRow;
-    const event = await fetchEventBySlug(row.event_slug);
-    const position = summarizePaperPosition(row, event);
+    const position = summarizePaperPosition(row, verified.event);
 
     return withPaperCookie(
       NextResponse.json({ position }, { status: 201 }),

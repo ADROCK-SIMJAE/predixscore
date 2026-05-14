@@ -402,7 +402,8 @@ async function searchEvents(options: {
 }
 
 export async function fetchActiveMarkets(limit = 600) {
-  const pageSize = 100;
+  // Gamma events include nested market payloads; 100 rows can exceed Next's 2MB data cache limit.
+  const pageSize = 10;
   const collected = new Map<string, MarketSnapshot>();
   let offset = 0;
 

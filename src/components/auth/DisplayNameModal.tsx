@@ -70,7 +70,7 @@ export function DisplayNameModal({ open, onClose }: DisplayNameModalProps) {
 
         <button
           type="button"
-          className="w-full py-3.5 rounded-[8px] border-none cursor-pointer font-bold text-[15px] tracking-[-0.01em] text-white bg-[#0fa968] transition-colors duration-[160ms] hover:enabled:bg-[#0d8e58] disabled:bg-ink/10 disabled:text-ink/40 disabled:cursor-not-allowed"
+          className="w-full py-3.5 rounded-[8px] border-none cursor-pointer font-bold text-[15px] tracking-[-0.01em] text-white bg-[#0fa968] transition-colors duration-150 hover:enabled:bg-[#0d8e58] disabled:bg-ink/10 disabled:text-ink/40 disabled:cursor-not-allowed"
           onClick={submit}
           disabled={submitting || name.trim().length < 2}
         >

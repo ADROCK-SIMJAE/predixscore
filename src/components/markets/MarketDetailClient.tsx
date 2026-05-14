@@ -92,6 +92,20 @@ function getProbability(market: MarketSnapshot) {
   return clamp(market.outcomePrices[0] ?? market.probability ?? 0, 0, 1);
 }
 
+function canPredictOutcome(market: MarketSnapshot | undefined, side: number) {
+  if (!market) return false;
+  const price = market.outcomePrices[side];
+  return (
+    market.active &&
+    !market.closed &&
+    Boolean(market.outcomes[side]) &&
+    Boolean(market.clobTokenIds[side]) &&
+    Number.isFinite(price) &&
+    price > 0 &&
+    price <= 1
+  );
+}
+
 export function MarketDetailClient({
   event,
   authConfigured,
@@ -140,6 +154,18 @@ export function MarketDetailClient({
     : isMultiMarket
       ? "multi"
       : "binary";
+  // Polymarket sometimes leaves event.endDate empty for multi-deadline events.
+  // Fall back to latest market endDate so users see when the umbrella effectively closes.
+  const marketEndTimestamps = event.markets
+    .map((m) => (m.endDate ? new Date(m.endDate).getTime() : NaN))
+    .filter((t) => Number.isFinite(t));
+  const effectiveEndDate =
+    event.endDate ?? (marketEndTimestamps.length ? new Date(Math.max(...marketEndTimestamps)).toISOString() : null);
+  const earliestEndDate = marketEndTimestamps.length
+    ? new Date(Math.min(...marketEndTimestamps)).toISOString()
+    : null;
+  const hasMultipleDeadlines =
+    eventType === "scheduled" && new Set(event.markets.map((m) => m.endDate)).size > 1;
   const activeMarket = event.markets[marketIndex] ?? event.markets[0];
   const tokenId = activeMarket?.clobTokenIds[outcomeIndex] ?? "";
   const outcomeLabel = activeMarket?.outcomes[outcomeIndex] ?? "Yes";
@@ -287,6 +313,8 @@ export function MarketDetailClient({
   const [signInOpen, setSignInOpen] = useState(false);
 
   function openBet(targetMarketIndex: number, side: 0 | 1) {
+    const targetMarket = event.markets[targetMarketIndex];
+    if (!canPredictOutcome(targetMarket, side)) return;
     setMarketIndex(targetMarketIndex);
     setOutcomeIndex(side);
     if (!user) {
@@ -376,7 +404,16 @@ export function MarketDetailClient({
               </div>
               <div className="grid gap-1">
                 <span className="text-[12px] text-muted uppercase tracking-[0.06em]">{t("statResolves")}</span>
-                <strong className="text-[18px] tracking-[-0.02em] tabular-nums">{formatDateLabel(event.endDate)}</strong>
+                {hasMultipleDeadlines && earliestEndDate ? (
+                  <strong className="text-[18px] tracking-[-0.02em] tabular-nums leading-tight">
+                    {formatDateLabel(earliestEndDate)}
+                    <span className="text-muted text-[12px] tracking-normal"> → {formatDateLabel(effectiveEndDate)}</span>
+                  </strong>
+                ) : (
+                  <strong className="text-[18px] tracking-[-0.02em] tabular-nums">
+                    {formatDateLabel(effectiveEndDate)}
+                  </strong>
+                )}
               </div>
               {event.volume1wk > 0 ? (
                 <div className="grid gap-1">
@@ -511,8 +548,10 @@ export function MarketDetailClient({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="flex items-center justify-between gap-2 px-5 py-4 rounded-[16px] border border-[rgba(15,169,104,0.18)] bg-gradient-to-b from-[rgba(15,169,104,0.16)] to-[rgba(15,169,104,0.06)] text-[#0e6d44] font-semibold text-[16px] cursor-pointer transition-[transform,background] duration-[120ms] hover:-translate-y-px active:scale-[0.98] will-change-transform"
+                className="flex items-center justify-between gap-2 px-5 py-4 rounded-[16px] border border-[rgba(15,169,104,0.18)] bg-gradient-to-b from-[rgba(15,169,104,0.16)] to-[rgba(15,169,104,0.06)] text-[#0e6d44] font-semibold text-[16px] cursor-pointer transition-[transform,background] duration-100 hover:-translate-y-px active:scale-[0.98] will-change-transform disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
                 onClick={() => openBet(marketIndex, 0)}
+                disabled={!canPredictOutcome(activeMarket, 0)}
+                title={!canPredictOutcome(activeMarket, 0) ? t("predictUnavailable") : undefined}
               >
                 <span>{t("predictYes")}</span>
                 <strong className="text-[22px] tabular-nums tracking-[-0.02em]">{Math.round((activeMarket?.outcomePrices[0] ?? 0) * 100)}%</strong>
@@ -520,8 +559,10 @@ export function MarketDetailClient({
               {activeMarket?.outcomes[1] ? (
                 <button
                   type="button"
-                  className="flex items-center justify-between gap-2 px-5 py-4 rounded-[16px] border border-[rgba(239,91,97,0.18)] bg-gradient-to-b from-[rgba(239,91,97,0.16)] to-[rgba(239,91,97,0.06)] text-[#b13036] font-semibold text-[16px] cursor-pointer transition-[transform,background] duration-[120ms] hover:-translate-y-px active:scale-[0.98] will-change-transform"
+                  className="flex items-center justify-between gap-2 px-5 py-4 rounded-[16px] border border-[rgba(239,91,97,0.18)] bg-gradient-to-b from-[rgba(239,91,97,0.16)] to-[rgba(239,91,97,0.06)] text-[#b13036] font-semibold text-[16px] cursor-pointer transition-[transform,background] duration-100 hover:-translate-y-px active:scale-[0.98] will-change-transform disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
                   onClick={() => openBet(marketIndex, 1)}
+                  disabled={!canPredictOutcome(activeMarket, 1)}
+                  title={!canPredictOutcome(activeMarket, 1) ? t("predictUnavailable") : undefined}
                 >
                   <span>{t("predictNo")}</span>
                   <strong className="text-[22px] tabular-nums tracking-[-0.02em]">{Math.round((activeMarket?.outcomePrices[1] ?? 0) * 100)}%</strong>
@@ -586,7 +627,7 @@ export function MarketDetailClient({
                   return (
                     <div
                       key={market.id}
-                      className={`grid items-center px-3.5 py-2.5 rounded-[14px] border transition-all duration-[160ms] will-change-transform [grid-template-columns:36px_minmax(0,1.4fr)_minmax(140px,1fr)_80px_200px] gap-3.5 max-[720px]:[grid-template-columns:24px_1fr_80px] max-[720px]:gap-2 ${
+                      className={`grid items-center px-3.5 py-2.5 rounded-[14px] border transition-all duration-150 will-change-transform [grid-template-columns:36px_minmax(0,1.4fr)_minmax(140px,1fr)_80px_200px] gap-3.5 max-[720px]:[grid-template-columns:24px_1fr_80px] max-[720px]:gap-2 ${
                         isActive
                           ? "bg-gradient-to-b from-accent/[0.08] to-white/[0.92] border-accent/[0.32]"
                           : "bg-white/60 border-ink/[0.06] hover:bg-white/[0.86] hover:border-ink/[0.12]"
@@ -621,8 +662,10 @@ export function MarketDetailClient({
                       <div className="grid grid-cols-2 gap-1.5 max-[720px]:col-span-3">
                         <button
                           type="button"
-                          className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-[10px] border border-[rgba(15,169,104,0.18)] bg-gradient-to-b from-[rgba(15,169,104,0.16)] to-[rgba(15,169,104,0.06)] text-[#0e6d44] font-semibold text-[12px] cursor-pointer min-w-[64px] hover:-translate-y-px active:scale-[0.98] transition-[transform,background] duration-[120ms]"
+                          className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-[10px] border border-[rgba(15,169,104,0.18)] bg-gradient-to-b from-[rgba(15,169,104,0.16)] to-[rgba(15,169,104,0.06)] text-[#0e6d44] font-semibold text-[12px] cursor-pointer min-w-[64px] hover:-translate-y-px active:scale-[0.98] transition-[transform,background] duration-100 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
                           onClick={() => openBet(originalIndex, 0)}
+                          disabled={!canPredictOutcome(market, 0)}
+                          title={!canPredictOutcome(market, 0) ? t("predictUnavailable") : undefined}
                         >
                           <span className="text-[11px] uppercase tracking-[0.04em] opacity-80">Yes</span>
                           <strong className="text-[14px] tabular-nums">{Math.round((market.outcomePrices[0] ?? 0) * 100)}%</strong>
@@ -630,8 +673,10 @@ export function MarketDetailClient({
                         {market.outcomes[1] ? (
                           <button
                             type="button"
-                            className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-[10px] border border-[rgba(239,91,97,0.18)] bg-gradient-to-b from-[rgba(239,91,97,0.16)] to-[rgba(239,91,97,0.06)] text-[#b13036] font-semibold text-[12px] cursor-pointer min-w-[64px] hover:-translate-y-px active:scale-[0.98] transition-[transform,background] duration-[120ms]"
+                            className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-[10px] border border-[rgba(239,91,97,0.18)] bg-gradient-to-b from-[rgba(239,91,97,0.16)] to-[rgba(239,91,97,0.06)] text-[#b13036] font-semibold text-[12px] cursor-pointer min-w-[64px] hover:-translate-y-px active:scale-[0.98] transition-[transform,background] duration-100 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
                             onClick={() => openBet(originalIndex, 1)}
+                            disabled={!canPredictOutcome(market, 1)}
+                            title={!canPredictOutcome(market, 1) ? t("predictUnavailable") : undefined}
                           >
                             <span className="text-[11px] uppercase tracking-[0.04em] opacity-80">No</span>
                             <strong className="text-[14px] tabular-nums">{Math.round((market.outcomePrices[1] ?? 0) * 100)}%</strong>
@@ -652,7 +697,7 @@ export function MarketDetailClient({
           <div className="glass-panel overflow-hidden p-0">
             <button
               type="button"
-              className="w-full flex justify-between items-center px-[22px] py-[18px] bg-transparent border-none cursor-pointer text-left text-ink transition-colors duration-[160ms] hover:bg-accent/[0.04]"
+              className="w-full flex justify-between items-center px-[22px] py-[18px] bg-transparent border-none cursor-pointer text-left text-ink transition-colors duration-150 hover:bg-accent/[0.04]"
               onClick={() => setShowBook((v) => !v)}
               aria-expanded={showBook}
             >

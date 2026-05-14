@@ -66,7 +66,7 @@ export function PositionsList({ positions, emptyHint }: PositionsListProps) {
         return (
           <Link
             href={`/event/${p.eventSlug}?market=${p.marketSlug}`}
-            className="grid [grid-template-columns:minmax(0,1.6fr)_110px_110px_130px_110px] gap-3.5 items-center px-4 py-3.5 rounded-[14px] bg-white/70 border border-ink/[0.06] no-underline text-inherit transition-[transform,box-shadow,background] duration-[160ms] hover:bg-white/95 hover:-translate-y-px hover:shadow-[0_8px_22px_rgba(13,28,65,0.08)] max-[720px]:[grid-template-columns:minmax(0,1.4fr)_80px_100px]"
+            className="grid [grid-template-columns:minmax(0,1.6fr)_110px_110px_130px_110px] gap-3.5 items-center px-4 py-3.5 rounded-[14px] bg-white/70 border border-ink/[0.06] no-underline text-inherit transition-[transform,box-shadow,background] duration-150 hover:bg-white/95 hover:-translate-y-px hover:shadow-[0_8px_22px_rgba(13,28,65,0.08)] max-[720px]:[grid-template-columns:minmax(0,1.4fr)_80px_100px]"
             key={p.id}
           >
             <div className="grid gap-1 min-w-0">
