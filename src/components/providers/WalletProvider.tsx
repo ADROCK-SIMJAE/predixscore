@@ -1,31 +1,41 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Wallet } from "ethers";
+// Identity-only wallet. The server pays gas via the sponsor wallet — the user
+// never signs an onchain transaction or holds RON. We still keep a per-user
+// burner so each user has a stable EVM address that the contract records as
+// the owner of their commits.
+//
+// The wallet is generated automatically on first sign-in, stored in IndexedDB,
+// and the address is bound to the Supabase user via /api/blockchain/commits
+// (the RPC upserts user_wallets when the first commit lands).
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "./AuthProvider";
-import {
-  buildSigner,
-  createWallet,
-  getStoredAddress,
-  hasWallet,
-  unlockWallet,
-  type WalletInfo,
-} from "@/lib/blockchain/wallet";
+import { createWallet, getStoredAddress, hasWallet, unlockWallet } from "@/lib/blockchain/wallet";
 import { getChainConfig, isRegistryConfigured } from "@/lib/blockchain/config";
+
+const AUTO_PASSWORD_STORAGE_KEY = "predixscore:wallet:auto-pass";
+
+function ensureAutoPassword(): string {
+  if (typeof window === "undefined") return "predixscore-poc";
+  let value = window.localStorage.getItem(AUTO_PASSWORD_STORAGE_KEY);
+  if (!value) {
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    value = Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
+    window.localStorage.setItem(AUTO_PASSWORD_STORAGE_KEY, value);
+  }
+  return value;
+}
 
 type WalletContextValue = {
   ready: boolean;
   configured: boolean;
   address: `0x${string}` | null;
-  hasLocalWallet: boolean;
-  unlocked: boolean;
   chainId: number;
   chainName: string;
   explorerUrl: string;
-  ensureWallet: (password: string) => Promise<WalletInfo>;
-  unlock: (password: string) => Promise<WalletInfo | null>;
-  lock: () => void;
-  getSigner: () => Wallet | null;
+  ensureAddress: () => Promise<`0x${string}` | null>;
 };
 
 const Context = createContext<WalletContextValue | null>(null);
@@ -35,10 +45,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const cfg = getChainConfig();
   const configured = isRegistryConfigured();
   const [address, setAddress] = useState<`0x${string}` | null>(null);
-  const [hasLocalWallet, setHasLocal] = useState(false);
   const [ready, setReady] = useState(false);
-  const signerRef = useRef<Wallet | null>(null);
-  const [unlocked, setUnlocked] = useState(false);
 
   const userKey = user?.id ?? null;
 
@@ -47,16 +54,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     async function init() {
       if (!userKey) {
         setAddress(null);
-        setHasLocal(false);
-        signerRef.current = null;
-        setUnlocked(false);
         setReady(true);
         return;
       }
+      const password = ensureAutoPassword();
       const exists = await hasWallet(userKey);
-      const addr = await getStoredAddress(userKey);
+      let addr: `0x${string}` | null;
+      if (exists) {
+        const info = await unlockWallet(userKey, password);
+        addr = info?.address ?? (await getStoredAddress(userKey));
+      } else {
+        const info = await createWallet(userKey, password);
+        addr = info.address;
+      }
       if (cancelled) return;
-      setHasLocal(exists);
       setAddress(addr);
       setReady(true);
     }
@@ -67,60 +78,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, [userKey]);
 
-  const ensureWallet = useCallback(
-    async (password: string): Promise<WalletInfo> => {
-      if (!userKey) throw new Error("Sign in required.");
-      const exists = await hasWallet(userKey);
-      let info: WalletInfo | null = null;
-      if (exists) {
-        info = await unlockWallet(userKey, password);
-        if (!info) throw new Error("Wrong wallet password.");
-      } else {
-        info = await createWallet(userKey, password);
-      }
-      signerRef.current = buildSigner(info.privateKey);
+  const ensureAddress = useCallback(async () => {
+    if (!userKey) return null;
+    const password = ensureAutoPassword();
+    const exists = await hasWallet(userKey);
+    if (!exists) {
+      const info = await createWallet(userKey, password);
       setAddress(info.address);
-      setHasLocal(true);
-      setUnlocked(true);
-      return info;
-    },
-    [userKey],
-  );
-
-  const unlock = useCallback(
-    async (password: string) => {
-      if (!userKey) return null;
-      const info = await unlockWallet(userKey, password);
-      if (!info) return null;
-      signerRef.current = buildSigner(info.privateKey);
-      setAddress(info.address);
-      setUnlocked(true);
-      return info;
-    },
-    [userKey],
-  );
-
-  const lock = useCallback(() => {
-    signerRef.current = null;
-    setUnlocked(false);
-  }, []);
+      return info.address;
+    }
+    const info = await unlockWallet(userKey, password);
+    const addr = info?.address ?? (await getStoredAddress(userKey));
+    setAddress(addr);
+    return addr;
+  }, [userKey]);
 
   const value = useMemo<WalletContextValue>(
     () => ({
       ready,
       configured,
       address,
-      hasLocalWallet,
-      unlocked,
       chainId: cfg.chainId,
       chainName: cfg.name,
       explorerUrl: cfg.explorerUrl,
-      ensureWallet,
-      unlock,
-      lock,
-      getSigner: () => signerRef.current,
+      ensureAddress,
     }),
-    [ready, configured, address, hasLocalWallet, unlocked, cfg.chainId, cfg.name, cfg.explorerUrl, ensureWallet, unlock, lock],
+    [ready, configured, address, cfg.chainId, cfg.name, cfg.explorerUrl, ensureAddress],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

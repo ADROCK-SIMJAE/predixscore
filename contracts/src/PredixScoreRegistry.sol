@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 /// @notice 군중심리에 휘둘리지 않은 개인 예측을 위변조 불가능하게 기록.
 ///         commit 단계에선 해시만 onchain (서버·다른 유저도 내용 모름).
 ///         시장 종료 후 reveal 로 검증.
+///         가스 대납을 위해 `user` 를 명시적 파라미터로 받는다 (blockpick 패턴).
 contract PredixScoreRegistry {
     struct Commit {
         address user;
@@ -34,7 +35,8 @@ contract PredixScoreRegistry {
         bytes32 indexed marketRef,
         bytes32 hash,
         uint64 committedAt,
-        uint64 revealAfter
+        uint64 revealAfter,
+        address sponsor
     );
 
     event Revealed(
@@ -42,42 +44,46 @@ contract PredixScoreRegistry {
         address indexed user,
         uint8 outcomeIndex,
         uint128 stakeAmount,
-        uint128 entryPrice
+        uint128 entryPrice,
+        address sponsor
     );
 
     error RevealInPast();
-    error NotOwner();
+    error ZeroUser();
     error AlreadyRevealed();
     error TooEarly();
     error HashMismatch();
     error NoCommit();
 
-    /// @notice 예측 hash 를 onchain 에 기록.
+    /// @notice 예측 hash 를 onchain 에 기록. `user` 는 호출자(sponsor)와 달라도 됨.
+    /// @param user         예측 소유자 주소 (가스를 대납받는 유저).
     /// @param hash         keccak256(abi.encode(user, marketRef, outcomeIndex, stakeAmount, entryPrice, salt))
     /// @param marketRef    keccak256(abi.encode(eventSlug, marketSlug))
     /// @param revealAfter  시장 resolution 시각 (unix seconds). 그 이전엔 reveal 불가.
-    function commit(bytes32 hash, bytes32 marketRef, uint64 revealAfter)
+    function commit(address user, bytes32 hash, bytes32 marketRef, uint64 revealAfter)
         external
         returns (uint256 id)
     {
+        if (user == address(0)) revert ZeroUser();
         if (revealAfter <= block.timestamp) revert RevealInPast();
 
         id = nextId++;
         commits[id] = Commit({
-            user: msg.sender,
+            user: user,
             hash: hash,
             marketRef: marketRef,
             committedAt: uint64(block.timestamp),
             revealAfter: revealAfter,
             revealed: false
         });
-        _userCommits[msg.sender].push(id);
+        _userCommits[user].push(id);
         _marketCommits[marketRef].push(id);
 
-        emit Committed(id, msg.sender, marketRef, hash, uint64(block.timestamp), revealAfter);
+        emit Committed(id, user, marketRef, hash, uint64(block.timestamp), revealAfter, msg.sender);
     }
 
     /// @notice 시장 종료 후 commit 평문 공개 + 해시 검증.
+    ///         msg.sender 검사 없음 — 해시 일치만으로 무결성 보장 (sponsor reveal 허용).
     function reveal(
         uint256 id,
         uint8 outcomeIndex,
@@ -87,7 +93,6 @@ contract PredixScoreRegistry {
     ) external {
         Commit storage c = commits[id];
         if (c.user == address(0)) revert NoCommit();
-        if (c.user != msg.sender) revert NotOwner();
         if (c.revealed) revert AlreadyRevealed();
         if (block.timestamp < c.revealAfter) revert TooEarly();
 
@@ -104,7 +109,7 @@ contract PredixScoreRegistry {
             salt: salt
         });
 
-        emit Revealed(id, msg.sender, outcomeIndex, stakeAmount, entryPrice);
+        emit Revealed(id, c.user, outcomeIndex, stakeAmount, entryPrice, msg.sender);
     }
 
     /// @notice 특정 유저의 모든 commit id 목록.

@@ -58,16 +58,28 @@
 
 | 컨트랙트 | 주소 | 비고 |
 |---|---|---|
-| `PredixScoreRegistry` | `0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6` | 2026-05-18 배포, 21 gwei * ~530k gas ≈ 0.013 RON |
+| `PredixScoreRegistry` v1 | `0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6` | 2026-05-18, msg.sender 기반 — deprecated |
+| `PredixScoreRegistry` v2 (sponsored) | `0x8FC03B689D14D25d296A15Da307764d6359f5BF0` | 2026-05-18 재배포, `commit(user,...)` — 가스 대납 패턴 |
 
-배포자: `0xa4385a0d6D76c213d1D3B6CD390aD477ee7EAb84`
+배포자 / sponsor wallet: `0xa4385a0d6D76c213d1D3B6CD390aD477ee7EAb84`
+
+### Gas-sponsored 정책
+
+blockpick `BlockchainContract.requestEncryptionKey(_index, _userAddress)` 패턴 그대로 차용.
+
+- 유저는 RON 보유 불필요. 클라이언트 burner wallet은 **identity 전용** (IndexedDB 자동 생성, password도 localStorage 자동 생성).
+- 클라이언트가 `keccak256(abi.encode(user,marketRef,...,salt))` 해시만 계산 → API 서버로 전송.
+- 서버 `PREDIX_SPONSOR_PRIVATE_KEY` 로 `commit(user, hash, marketRef, revealAfter)` 트랜잭션 서명·제출·receipt 대기.
+- 컨트랙트는 `_userCommits[user]` 에 user 주소로 인덱싱 — sponsor는 단순 가스 페이어.
+- POC: sponsor wallet은 배포자와 동일. 운영 전엔 분리 + KMS 서명 권장.
 
 프론트엔드 `.env.local`:
 
 ```
 NEXT_PUBLIC_PREDIX_CHAIN_ID=2020
 NEXT_PUBLIC_PREDIX_RPC_URL=https://api.roninchain.com/rpc
-NEXT_PUBLIC_PREDIX_REGISTRY_ADDRESS=0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6
+NEXT_PUBLIC_PREDIX_REGISTRY_ADDRESS=0x8FC03B689D14D25d296A15Da307764d6359f5BF0
+PREDIX_SPONSOR_PRIVATE_KEY=0x...   # server only, fund this wallet with RON
 ```
 
 ### 추가된 파일

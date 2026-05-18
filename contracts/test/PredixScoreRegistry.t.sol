@@ -6,6 +6,7 @@ import {PredixScoreRegistry} from "../src/PredixScoreRegistry.sol";
 
 contract PredixScoreRegistryTest is Test {
     PredixScoreRegistry registry;
+    address sponsor = address(0x59005); // gas payer
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
     bytes32 marketRef;
@@ -27,25 +28,30 @@ contract PredixScoreRegistryTest is Test {
         return registry.predictionHash(user, marketRef, outcome, stake, price, salt);
     }
 
-    function test_commit_and_reveal() public {
+    function test_sponsoredCommitAndReveal() public {
         bytes32 salt = keccak256("alice-salt-1");
         uint8 outcome = 0;
-        uint128 stake = 25_000_000; // 25 USDC
+        uint128 stake = 25_000_000;
         uint128 price = 0.42e18;
         bytes32 h = _hash(alice, outcome, stake, price, salt);
 
-        vm.prank(alice);
-        uint256 id = registry.commit(h, marketRef, revealAfter);
+        // sponsor가 alice 대신 commit 제출
+        vm.prank(sponsor);
+        uint256 id = registry.commit(alice, h, marketRef, revealAfter);
         assertEq(id, 0);
 
+        // commit 소유자는 alice (sponsor 아님)
+        (address user,,,,,) = registry.commits(id);
+        assertEq(user, alice);
+
         // 너무 빠른 reveal 차단
-        vm.prank(alice);
+        vm.prank(sponsor);
         vm.expectRevert(PredixScoreRegistry.TooEarly.selector);
         registry.reveal(id, outcome, stake, price, salt);
 
-        // 시장 종료 후 정상 reveal
+        // 시장 종료 후 sponsor가 reveal도 대행
         vm.warp(revealAfter + 1);
-        vm.prank(alice);
+        vm.prank(sponsor);
         registry.reveal(id, outcome, stake, price, salt);
 
         (uint8 ro, uint128 rs, uint128 rp, bytes32 rsalt) = registry.reveals(id);
@@ -59,27 +65,20 @@ contract PredixScoreRegistryTest is Test {
         bytes32 salt = keccak256("alice-salt-2");
         bytes32 h = _hash(alice, 0, 100, 0.5e18, salt);
 
-        vm.prank(alice);
-        uint256 id = registry.commit(h, marketRef, revealAfter);
+        vm.prank(sponsor);
+        uint256 id = registry.commit(alice, h, marketRef, revealAfter);
 
         vm.warp(revealAfter + 1);
-        vm.prank(alice);
+        vm.prank(sponsor);
         vm.expectRevert(PredixScoreRegistry.HashMismatch.selector);
-        // 다른 outcome 으로 reveal 시도 → 거절
         registry.reveal(id, 1, 100, 0.5e18, salt);
     }
 
-    function test_reveal_rejectsNotOwner() public {
-        bytes32 salt = keccak256("alice-salt-3");
-        bytes32 h = _hash(alice, 0, 100, 0.5e18, salt);
-
-        vm.prank(alice);
-        uint256 id = registry.commit(h, marketRef, revealAfter);
-
-        vm.warp(revealAfter + 1);
-        vm.prank(bob);
-        vm.expectRevert(PredixScoreRegistry.NotOwner.selector);
-        registry.reveal(id, 0, 100, 0.5e18, salt);
+    function test_commit_rejectsZeroUser() public {
+        bytes32 h = bytes32(uint256(1));
+        vm.prank(sponsor);
+        vm.expectRevert(PredixScoreRegistry.ZeroUser.selector);
+        registry.commit(address(0), h, marketRef, revealAfter);
     }
 
     function test_reveal_doubleRejected() public {
@@ -89,37 +88,36 @@ contract PredixScoreRegistryTest is Test {
         uint128 price = 0.5e18;
         bytes32 h = _hash(alice, outcome, stake, price, salt);
 
-        vm.prank(alice);
-        uint256 id = registry.commit(h, marketRef, revealAfter);
+        vm.prank(sponsor);
+        uint256 id = registry.commit(alice, h, marketRef, revealAfter);
 
         vm.warp(revealAfter + 1);
-        vm.prank(alice);
+        vm.prank(sponsor);
         registry.reveal(id, outcome, stake, price, salt);
 
-        vm.prank(alice);
+        vm.prank(sponsor);
         vm.expectRevert(PredixScoreRegistry.AlreadyRevealed.selector);
         registry.reveal(id, outcome, stake, price, salt);
     }
 
     function test_commit_rejectsRevealInPast() public {
         bytes32 h = bytes32(uint256(1));
-        vm.prank(alice);
+        vm.prank(sponsor);
         vm.expectRevert(PredixScoreRegistry.RevealInPast.selector);
-        registry.commit(h, marketRef, uint64(block.timestamp));
+        registry.commit(alice, h, marketRef, uint64(block.timestamp));
     }
 
-    function test_indexing() public {
-        // alice 가 같은 시장에 두 번, bob 도 한 번
+    function test_indexingAcrossUsers() public {
         bytes32 h1 = _hash(alice, 0, 1, 0.3e18, "s1");
         bytes32 h2 = _hash(alice, 1, 1, 0.7e18, "s2");
         bytes32 h3 = _hash(bob, 0, 1, 0.4e18, "s3");
 
-        vm.prank(alice);
-        registry.commit(h1, marketRef, revealAfter);
-        vm.prank(alice);
-        registry.commit(h2, marketRef, revealAfter);
-        vm.prank(bob);
-        registry.commit(h3, marketRef, revealAfter);
+        vm.prank(sponsor);
+        registry.commit(alice, h1, marketRef, revealAfter);
+        vm.prank(sponsor);
+        registry.commit(alice, h2, marketRef, revealAfter);
+        vm.prank(sponsor);
+        registry.commit(bob, h3, marketRef, revealAfter);
 
         uint256[] memory aliceIds = registry.userCommitIds(alice);
         uint256[] memory bobIds = registry.userCommitIds(bob);

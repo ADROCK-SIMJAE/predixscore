@@ -1,5 +1,5 @@
-// PredixScoreRegistry ABI (subset — only what the dapp calls).
-// Source: contracts/src/PredixScoreRegistry.sol
+// PredixScoreRegistry ABI (subset — only what the dapp + sponsor backend call).
+// Source: contracts/src/PredixScoreRegistry.sol (sponsored commit/reveal variant).
 
 export const PREDIX_SCORE_REGISTRY_ABI = [
   {
@@ -7,6 +7,7 @@ export const PREDIX_SCORE_REGISTRY_ABI = [
     name: "commit",
     stateMutability: "nonpayable",
     inputs: [
+      { name: "user", type: "address" },
       { name: "hash", type: "bytes32" },
       { name: "marketRef", type: "bytes32" },
       { name: "revealAfter", type: "uint64" },
@@ -64,6 +65,7 @@ export const PREDIX_SCORE_REGISTRY_ABI = [
       { name: "hash", type: "bytes32", indexed: false },
       { name: "committedAt", type: "uint64", indexed: false },
       { name: "revealAfter", type: "uint64", indexed: false },
+      { name: "sponsor", type: "address", indexed: false },
     ],
     anonymous: false,
   },
@@ -76,6 +78,7 @@ export const PREDIX_SCORE_REGISTRY_ABI = [
       { name: "outcomeIndex", type: "uint8", indexed: false },
       { name: "stakeAmount", type: "uint128", indexed: false },
       { name: "entryPrice", type: "uint128", indexed: false },
+      { name: "sponsor", type: "address", indexed: false },
     ],
     anonymous: false,
   },
