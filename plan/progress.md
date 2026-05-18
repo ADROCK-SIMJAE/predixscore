@@ -54,6 +54,22 @@
 블록체인 기술은 blockpick (ethers v6 + IndexedDB 버너 지갑 + ECDSA secp256k1)을 참고.
 스마트 컨트랙트 호출은 **동기** — 페이퍼 포지션 저장 직후 같은 흐름에서 `commit()` 트랜잭션을 await 한다.
 
+### 배포 (Ronin Mainnet, chain 2020)
+
+| 컨트랙트 | 주소 | 비고 |
+|---|---|---|
+| `PredixScoreRegistry` | `0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6` | 2026-05-18 배포, 21 gwei * ~530k gas ≈ 0.013 RON |
+
+배포자: `0xa4385a0d6D76c213d1D3B6CD390aD477ee7EAb84`
+
+프론트엔드 `.env.local`:
+
+```
+NEXT_PUBLIC_PREDIX_CHAIN_ID=2020
+NEXT_PUBLIC_PREDIX_RPC_URL=https://api.roninchain.com/rpc
+NEXT_PUBLIC_PREDIX_REGISTRY_ADDRESS=0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6
+```
+
 ### 추가된 파일
 
 - `supabase/migrations/0003_blockchain_commits.sql` — `blockchain_commits`, `user_wallets` 테이블 + RPC

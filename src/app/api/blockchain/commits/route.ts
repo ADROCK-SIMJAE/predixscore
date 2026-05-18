@@ -24,7 +24,8 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Sign in required." }, { status: 401 });
     }
-    const { data, error } = await supabase.rpc("list_blockchain_commits", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("list_blockchain_commits", {
       p_user_id: user.id,
     });
     if (error) throw error;
@@ -61,7 +62,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in required." }, { status: 401 });
     }
 
-    const { data, error } = await supabase.rpc("record_blockchain_commit", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("record_blockchain_commit", {
       p_paper_position_id: payload.paperPositionId,
       p_wallet_address: payload.walletAddress,
       p_chain_id: payload.chainId,

@@ -21,7 +21,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in required." }, { status: 401 });
     }
 
-    const { data, error } = await supabase.rpc("record_blockchain_reveal", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("record_blockchain_reveal", {
       p_commit_row_id: payload.commitRowId,
       p_reveal_tx_hash: payload.revealTxHash,
     });

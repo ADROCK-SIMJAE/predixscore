@@ -16,6 +16,9 @@ tab_width = 4
 bracket_spacing = false
 
 [rpc_endpoints]
+# Ronin (blockpick 패턴 — chainId 2020, legacy gas, ~20 gwei)
+ronin = "https://api.roninchain.com/rpc"
+ronin_saigon = "https://saigon-testnet.roninchain.com/rpc"
 base_sepolia = "https://sepolia.base.org"
 base_mainnet = "https://mainnet.base.org"
 

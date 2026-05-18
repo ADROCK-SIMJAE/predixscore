@@ -1,6 +1,20 @@
 # PredixScore Contracts
 
-PredixScore 의 onchain 예측 기록 컨트랙트. Base 에 배포.
+PredixScore 의 onchain 예측 기록 컨트랙트. **Ronin Mainnet 배포 완료** (blockpick 패턴 — chain 2020, legacy gas).
+
+## 배포 주소 (Ronin Mainnet — chain 2020)
+
+| 컨트랙트 | 주소 |
+|---|---|
+| `PredixScoreRegistry` | [`0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6`](https://app.roninchain.com/address/0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6) |
+
+프론트엔드 `.env.local`에 다음 추가:
+
+```
+NEXT_PUBLIC_PREDIX_CHAIN_ID=2020
+NEXT_PUBLIC_PREDIX_RPC_URL=https://api.roninchain.com/rpc
+NEXT_PUBLIC_PREDIX_REGISTRY_ADDRESS=0x21d60B982Fd076C3aAD668e2FC8E9C9A220547b6
+```
 
 ## 핵심 컨트랙트
 
@@ -38,37 +52,35 @@ forge build
 forge test -vvv
 ```
 
-## 배포 — Base Sepolia (testnet)
+## 배포 — Ronin Mainnet (chain 2020, 이미 배포됨)
 
-테스트넷 ETH 받기: https://www.alchemy.com/faucets/base-sepolia
+Ronin은 EIP-1559 미지원 → `--legacy` 필수. blockpick `BlockchainConfig.kt` 동일 패턴.
 
 ```bash
 source .env
 forge script script/DeployRegistry.s.sol:DeployRegistry \
-  --rpc-url base_sepolia \
+  --rpc-url ronin \
+  --legacy \
   --broadcast \
-  --verify \
+  --slow \
   -vvvv
 ```
 
-배포 주소가 콘솔에 출력됨. `frontend` 의 `.env.local` 에 다음 추가:
+가스 모델: 21 gwei * ~530k = ~0.011 RON 배포 비용. `commit()` 약 70k gas → 0.0015 RON, `reveal()` 약 85k gas → 0.0018 RON.
 
-```
-NEXT_PUBLIC_PREDIX_REGISTRY_ADDRESS=0x...
-NEXT_PUBLIC_PREDIX_CHAIN_ID=84532
-```
+## 배포 — Ronin Saigon (testnet, chain 2021)
 
-## 배포 — Base Mainnet
+Saigon faucet: https://faucet.roninchain.com/
 
 ```bash
 forge script script/DeployRegistry.s.sol:DeployRegistry \
-  --rpc-url base_mainnet \
+  --rpc-url ronin_saigon \
+  --legacy \
   --broadcast \
-  --verify \
   -vvvv
 ```
 
-`NEXT_PUBLIC_PREDIX_CHAIN_ID=8453` 로 변경.
+`NEXT_PUBLIC_PREDIX_CHAIN_ID=2021` 로 변경.
 
 ## 데이터 모델
 
@@ -110,11 +122,12 @@ const hash = keccak256(
 
 `revealAfter` = 시장 resolution 시각. Polymarket 이벤트의 `endDate` 그대로 사용 가능.
 
-## 가스 예상 (Base mainnet 기준, 1 gwei 가정)
+## 가스 예상 (Ronin Mainnet, 20 gwei 기준)
 
-- `commit`: ~70k gas ≈ $0.0002
-- `reveal`: ~85k gas ≈ $0.00025
-- Coinbase Paymaster 활성 시 → 무료 (월 한도 내)
+- `commit`: ~70k gas ≈ 0.0014 RON
+- `reveal`: ~85k gas ≈ 0.0017 RON
+- 배포(deploy): ~530k gas ≈ 0.011 RON
+- 가스 대납이 필요하면 blockpick의 `BlockchainTransactionServiceImpl` 패턴 참고 (API 서버가 user 주소로 대신 서명).
 
 ## 보안 노트
 

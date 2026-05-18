@@ -108,7 +108,8 @@ export async function GET(request: Request) {
     // Fetch any onchain commits the user already made; map by paper_position_id.
     let commitsByPosition = new Map<string, BlockchainCommitRow>();
     if (user) {
-      const { data: commitRows } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: commitRows } = await (supabase as any)
         .from("blockchain_commits")
         .select("*")
         .eq("user_id", user.id);
