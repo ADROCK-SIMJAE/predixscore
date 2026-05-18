@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   PAPER_SESSION_COOKIE,
   summarizePaperPosition,
+  type BlockchainCommitRow,
   type PaperPositionRow,
 } from "@/lib/paper";
 import { fetchEventBySlug } from "@/lib/polymarket";
@@ -103,7 +104,28 @@ export async function GET(request: Request) {
       uniqueEventSlugs.map(async (slug) => [slug, await fetchEventBySlug(slug)] as const),
     );
     const eventMap = new Map(eventEntries);
-    const positions = rows.map((row) => summarizePaperPosition(row, eventMap.get(row.event_slug) ?? null));
+
+    // Fetch any onchain commits the user already made; map by paper_position_id.
+    let commitsByPosition = new Map<string, BlockchainCommitRow>();
+    if (user) {
+      const { data: commitRows } = await supabase
+        .from("blockchain_commits")
+        .select("*")
+        .eq("user_id", user.id);
+      if (commitRows) {
+        for (const row of commitRows as BlockchainCommitRow[]) {
+          commitsByPosition.set(row.paper_position_id, row);
+        }
+      }
+    }
+
+    const positions = rows.map((row) =>
+      summarizePaperPosition(
+        row,
+        eventMap.get(row.event_slug) ?? null,
+        commitsByPosition.get(row.id) ?? null,
+      ),
+    );
     const totals = positions.reduce(
       (acc, position) => {
         acc.staked += position.stakeAmount;

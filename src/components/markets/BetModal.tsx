@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Wallet } from "lucide-react";
+import { Wallet, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { clamp, formatCurrency, formatPercent } from "@/lib/format";
 import type { MarketSnapshot } from "@/types/polymarket";
+import { useWallet } from "@/components/providers/WalletProvider";
+import { commitPrediction, encryptRevealPayload } from "@/lib/blockchain/registry";
 
 type BetModalProps = {
   open: boolean;
@@ -25,6 +27,17 @@ type BetModalProps = {
 };
 
 const STAKE_PRESETS = [10, 25, 100, 500];
+
+// Default reveal-after if market.endDate is missing or invalid: 7 days out.
+function resolveRevealAfterUnix(endDate: string | null): number {
+  if (endDate) {
+    const ts = Math.floor(new Date(endDate).getTime() / 1000);
+    if (Number.isFinite(ts) && ts > Math.floor(Date.now() / 1000)) {
+      return ts;
+    }
+  }
+  return Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
+}
 
 function getOutcomeAvailability(market: MarketSnapshot, outcomeIndex: number) {
   const rawPrice = market.outcomePrices[outcomeIndex];
@@ -65,16 +78,21 @@ export function BetModal({
   onSuccess,
 }: BetModalProps) {
   const t = useTranslations("betModal");
+  const wallet = useWallet();
 
   const [outcomeIndex, setOutcomeIndex] = useState(initialOutcomeIndex);
   const [stake, setStake] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [availableBalance, setAvailableBalance] = useState<number>(10000);
+  const [walletPassword, setWalletPassword] = useState("");
+  const [chainStep, setChainStep] = useState<"idle" | "saving" | "signing" | "confirming" | "done">("idle");
 
   useEffect(() => {
     if (open) {
       setOutcomeIndex(initialOutcomeIndex);
       setStake("");
+      setWalletPassword("");
+      setChainStep("idle");
       fetch("/api/paper/stats")
         .then((r) => r.json())
         .then((d) => setAvailableBalance(d.stats?.availableBalance ?? 10000))
@@ -112,7 +130,12 @@ export function BetModal({
 
   async function submit() {
     if (!canSubmit) return;
+    if (wallet.configured && !walletPassword) {
+      toast.error(t("walletPasswordRequired"));
+      return;
+    }
     setSubmitting(true);
+    setChainStep("saving");
 
     try {
       const response = await fetch("/api/paper/positions", {
@@ -145,13 +168,84 @@ export function BetModal({
 
       const savedPrice =
         typeof data.position?.entryPrice === "number" ? data.position.entryPrice : livePrice;
-      toast.success(
-        t("saveSuccess", {
-          outcome: outcomeLabel,
-          price: Math.round(savedPrice * 100),
-          amount: formatCurrency(numericStake),
-        }),
-      );
+      const paperPositionId = data.position?.id as string | undefined;
+
+      // Chain commit — sync, after paper position created.
+      if (wallet.configured && paperPositionId) {
+        try {
+          setChainStep("signing");
+          const info = await wallet.ensureWallet(walletPassword);
+          const signer = wallet.getSigner();
+          if (!signer) throw new Error("Wallet signer unavailable.");
+
+          setChainStep("confirming");
+          const revealAfterUnix = resolveRevealAfterUnix(market.endDate);
+          const commitResult = await commitPrediction(signer, {
+            eventSlug,
+            marketSlug: market.marketSlug,
+            outcomeIndex,
+            stakeAmount: numericStake,
+            entryPrice: savedPrice,
+            revealAfterUnix,
+          });
+
+          const encryptedPayload = encryptRevealPayload({
+            outcomeIndex,
+            stakeAmount: numericStake,
+            entryPrice: savedPrice,
+            salt: commitResult.salt,
+            commitId: commitResult.commitId !== null ? commitResult.commitId.toString() : null,
+          });
+
+          await fetch("/api/blockchain/commits", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              paperPositionId,
+              walletAddress: info.address,
+              chainId: commitResult.chainId,
+              contractAddress: commitResult.contractAddress,
+              commitId: commitResult.commitId !== null ? commitResult.commitId.toString() : null,
+              commitHash: commitResult.commitHash,
+              marketRef: commitResult.marketRef,
+              txHash: commitResult.txHash,
+              blockNumber: commitResult.blockNumber,
+              revealAfterUnix: commitResult.revealAfterUnix,
+              encryptedPayload,
+            }),
+          });
+
+          setChainStep("done");
+          toast.success(
+            t("chainCommitSuccess", {
+              outcome: outcomeLabel,
+              tx: commitResult.txHash.slice(0, 10) + "…",
+            }),
+          );
+        } catch (chainError) {
+          toast.warning(
+            chainError instanceof Error
+              ? t("chainCommitFail", { message: chainError.message })
+              : t("chainCommitFail", { message: "unknown" }),
+          );
+        }
+      } else if (!wallet.configured) {
+        toast.success(
+          t("saveSuccess", {
+            outcome: outcomeLabel,
+            price: Math.round(savedPrice * 100),
+            amount: formatCurrency(numericStake),
+          }),
+        );
+      } else {
+        toast.success(
+          t("saveSuccess", {
+            outcome: outcomeLabel,
+            price: Math.round(savedPrice * 100),
+            amount: formatCurrency(numericStake),
+          }),
+        );
+      }
       onSuccess?.();
       onClose();
     } catch (error) {
@@ -161,8 +255,17 @@ export function BetModal({
     }
   }
 
+  const chainProgressLabel =
+    chainStep === "saving"
+      ? t("savingPaper")
+      : chainStep === "signing"
+        ? t("walletSigning")
+        : chainStep === "confirming"
+          ? t("chainConfirming")
+          : null;
+
   const submitLabel = submitting
-    ? t("saving")
+    ? chainProgressLabel ?? t("saving")
     : outcomeAvailability.reason
       ? t(outcomeAvailability.reason)
     : !validStake
@@ -285,6 +388,32 @@ export function BetModal({
         {outcomeAvailability.reason ? (
           <div className="px-4 py-3.5 rounded-[14px] text-[14px] leading-[1.5] bg-[rgba(244,173,66,0.16)] text-[#91590b]">
             {t("unsupportedWarning", { reason: t(outcomeAvailability.reason) })}
+          </div>
+        ) : null}
+
+        {wallet.configured ? (
+          <div className="grid gap-2 px-4 py-3.5 rounded-[14px] bg-[rgba(15,109,255,0.06)] border border-[rgba(15,109,255,0.18)]">
+            <div className="flex items-center gap-2 text-[12px] font-semibold text-[#0a3d8f]">
+              <ShieldCheck size={14} />
+              <span>
+                {wallet.hasLocalWallet
+                  ? t("walletLockedHint", { chain: wallet.chainName })
+                  : t("walletCreateHint", { chain: wallet.chainName })}
+              </span>
+            </div>
+            {wallet.address ? (
+              <span className="text-[11px] text-muted tabular-nums">
+                {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
+              </span>
+            ) : null}
+            <input
+              type="password"
+              className="px-3 py-2 rounded-[10px] border border-ink/[0.12] bg-white/80 text-[14px] outline-none focus:border-[rgba(15,109,255,0.4)]"
+              placeholder={t("walletPasswordPlaceholder")}
+              value={walletPassword}
+              onChange={(event) => setWalletPassword(event.target.value)}
+              autoComplete="current-password"
+            />
           </div>
         ) : null}
 

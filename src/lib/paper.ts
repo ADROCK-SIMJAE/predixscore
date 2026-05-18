@@ -27,6 +27,22 @@ export type PaperPositionRow = {
   updated_at: string;
 };
 
+export type ChainCommitStatus = "none" | "committed" | "revealed" | "failed";
+
+export type ChainCommitSummary = {
+  id: string;
+  status: ChainCommitStatus;
+  txHash: string;
+  revealTxHash: string | null;
+  commitHash: string;
+  walletAddress: string;
+  chainId: number;
+  contractAddress: string;
+  blockNumber: number | null;
+  revealAfter: string;
+  commitId: string | null;
+};
+
 export type PaperPositionSummary = {
   id: string;
   eventSlug: string;
@@ -47,6 +63,7 @@ export type PaperPositionSummary = {
   realizedPnl: number | null;
   settledAt: string | null;
   createdAt: string;
+  chainCommit: ChainCommitSummary | null;
 };
 
 export function resolveCurrentPrice(event: EventDetail | null, tokenId: string, outcomeIndex: number) {
@@ -63,9 +80,46 @@ export function resolveCurrentPrice(event: EventDetail | null, tokenId: string, 
   return null;
 }
 
+export type BlockchainCommitRow = {
+  id: string;
+  paper_position_id: string;
+  user_id: string;
+  wallet_address: string;
+  chain_id: number;
+  contract_address: string;
+  commit_id: string | number | null;
+  commit_hash: string;
+  market_ref: string;
+  tx_hash: string;
+  block_number: number | null;
+  reveal_after: string;
+  status: ChainCommitStatus;
+  reveal_tx_hash: string | null;
+  revealed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function toChainCommitSummary(row: BlockchainCommitRow): ChainCommitSummary {
+  return {
+    id: row.id,
+    status: row.status,
+    txHash: row.tx_hash,
+    revealTxHash: row.reveal_tx_hash,
+    commitHash: row.commit_hash,
+    walletAddress: row.wallet_address,
+    chainId: row.chain_id,
+    contractAddress: row.contract_address,
+    blockNumber: row.block_number,
+    revealAfter: row.reveal_after,
+    commitId: row.commit_id !== null && row.commit_id !== undefined ? String(row.commit_id) : null,
+  };
+}
+
 export function summarizePaperPosition(
   row: PaperPositionRow,
   event: EventDetail | null,
+  chainCommit: BlockchainCommitRow | null = null,
 ): PaperPositionSummary {
   const isResolved = row.status_resolved === "won" || row.status_resolved === "lost";
   const currentPrice = isResolved
@@ -102,5 +156,6 @@ export function summarizePaperPosition(
     realizedPnl: row.realized_pnl,
     settledAt: row.settled_at,
     createdAt: row.created_at,
+    chainCommit: chainCommit ? toChainCommitSummary(chainCommit) : null,
   };
 }

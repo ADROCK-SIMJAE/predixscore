@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import type { PaperPositionSummary, PaperPositionStatus } from "@/lib/paper";
@@ -88,8 +89,23 @@ export function PositionsList({ positions, emptyHint }: PositionsListProps) {
                 <em className="not-italic text-[11px] text-muted font-medium">{formatPercent(p.pnlPercent)}</em>
               ) : null}
             </div>
-            <div>
+            <div className="grid gap-1">
               <span className={STATUS_PILL_CLASS[p.status]}>{t(`status.${p.status}`)}</span>
+              {p.chainCommit ? (
+                <span
+                  className={`inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.06em] uppercase ${
+                    p.chainCommit.status === "revealed"
+                      ? "text-[#0e6d44]"
+                      : p.chainCommit.status === "committed"
+                        ? "text-[#0a3d8f]"
+                        : "text-[#b13036]"
+                  }`}
+                  title={p.chainCommit.txHash}
+                >
+                  <ShieldCheck size={10} />
+                  {t(`chain.${p.chainCommit.status}`)}
+                </span>
+              ) : null}
             </div>
           </Link>
         );

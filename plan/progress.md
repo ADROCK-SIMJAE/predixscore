@@ -1,15 +1,15 @@
 # Development Progress
 
-> 마지막 갱신: 2026-05-13 17:08 KST
+> 마지막 갱신: 2026-05-18 KST
 
 ## 현재 트랙
 
-- Track A: 블록체인 없이 Supabase paper trading 먼저
+- Track A+B 병행 (POC): 기존 Supabase paper trading 유지 + 블록체인 commit-reveal POC 추가
 
 ## 현재 단계
 
-- Phase A1: Supabase Paper Trading Core
-- Phase A2: Bet UX와 Market Guardrail
+- Phase A1/A2 안정화
+- Phase B (POC): 동기 commit-reveal 통합 — 버너 지갑 + PredixScoreRegistry on Base Sepolia
 
 ## 진행 상태
 
@@ -48,3 +48,37 @@
 - 저장 후 positions/stats/home portfolio 숫자 일치 확인
 - `SUPABASE_SERVICE_ROLE_KEY` 설정 후 settlement 실제 적용 검증
 - 브라우저에서 unsupported market CTA disabled 상태 확인
+
+## POC: 블록체인 commit-reveal (2026-05-18 추가)
+
+블록체인 기술은 blockpick (ethers v6 + IndexedDB 버너 지갑 + ECDSA secp256k1)을 참고.
+스마트 컨트랙트 호출은 **동기** — 페이퍼 포지션 저장 직후 같은 흐름에서 `commit()` 트랜잭션을 await 한다.
+
+### 추가된 파일
+
+- `supabase/migrations/0003_blockchain_commits.sql` — `blockchain_commits`, `user_wallets` 테이블 + RPC
+- `src/lib/blockchain/config.ts` — Base Sepolia 기본 (NEXT_PUBLIC_PREDIX_* 환경변수로 오버라이드)
+- `src/lib/blockchain/hash.ts` — 컨트랙트와 동일한 `keccak256(abi.encode(...))` 해시 계산
+- `src/lib/blockchain/registry-abi.ts` — `PredixScoreRegistry` ABI subset
+- `src/lib/blockchain/wallet.ts` — 버너 지갑 생성/암호화/IndexedDB 저장 (blockpick 패턴)
+- `src/lib/blockchain/registry.ts` — `commit()` / `reveal()` 동기 호출 + 페이로드 암호화
+- `src/components/providers/WalletProvider.tsx` — 지갑 컨텍스트 (auto-create / unlock)
+- `src/app/api/blockchain/commits/route.ts` — 커밋 메타데이터 저장 (GET / POST)
+- `src/app/api/blockchain/reveals/route.ts` — reveal tx hash 기록
+
+### 변경된 파일
+
+- `src/components/markets/BetModal.tsx` — 지갑 비밀번호 입력 + 페이퍼 저장 → 온체인 commit 동기 실행
+- `src/components/portfolio/PositionsList.tsx` — `committed` / `revealed` / `failed` 배지 표시
+- `src/lib/paper.ts` — `PaperPositionSummary.chainCommit` 필드 추가
+- `src/app/api/paper/positions/route.ts` — GET 응답에 chain commit join
+- `package.json` — `ethers@^6.15.0` 추가
+- `messages/{en,ko}.json` — 지갑/체인 관련 카피 추가
+- `.env.example` — `NEXT_PUBLIC_PREDIX_*` 추가
+
+### POC 가정 / 한계
+
+- 가스 대납 없음. 유저는 본인 버너 지갑에 Sepolia ETH를 직접 충전해야 한다.
+- `encryptedPayload`는 JSON 평문(`registry.encryptReveal Payload`) — 추후 wallet 패스워드 기반 AES-GCM 으로 교체.
+- Reveal UI는 아직 없음. 컨트랙트와 API endpoint만 준비. 다음 사이클에서 PositionsList에 Reveal CTA 추가.
+- 컨트랙트 주소(`NEXT_PUBLIC_PREDIX_REGISTRY_ADDRESS`)가 비어 있으면 BetModal은 onchain 단계를 자동으로 스킵한다.
